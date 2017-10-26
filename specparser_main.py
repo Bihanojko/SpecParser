@@ -8,8 +8,9 @@ from tests import run_tests
 from examples import run_examples
 from model_methods import create_abstract_model, Specfile, class_to_specfile
 from model_methods import process_config_file, print_json_representation, remove_empty_fields
-from model_2_methods import create_spec_2_model, transform_spec2_to_spec1, Specfile2
-from go_spec import create_go_spec_model, GoSpecfile, reduce_gospecfile, transform_gospec_to_spec2
+from spec_model_generator import SpecModelGenerator
+from spec_model import SpecModel
+from go_spec_model_generator import GoSpecModelGenerator
 
 
 
@@ -57,6 +58,9 @@ def parse_arguments():
 
 def process_args(args):
 
+    specModelGenerator = SpecModelGenerator()
+    goSpecModelGenerator = GoSpecModelGenerator()
+
     # args.test == 1 => run all available tests
     if args.test:
         run_tests()
@@ -89,7 +93,7 @@ def process_args(args):
 
     # args.model is not set or set to 2 => output specfile or json in specfile 2.0 form
     else:
-        create_spec_2_model(Specfile)
+        specModel = specModelGenerator.create_specmodel(Specfile)
 
         # args.config is set => apply changes from given configuration file on specfile
         # if args.config:
@@ -100,29 +104,29 @@ def process_args(args):
         if args.model and args.model == 1 and not args.go_spec:
             print_json_representation(Specfile, args.reduced)
         elif not args.go_spec:
-            print_json_representation(Specfile2, args.reduced)
+            print_json_representation(specModel, args.reduced)
 
     # args.debug is set => read and process input specfile, transform into 2.0 and then back to 1.0
     if args.debug and args.model == 2:
-        Specfile1 = transform_spec2_to_spec1(Specfile2)
-        print(json.dumps(remove_empty_fields(Specfile1), default=lambda o: o.__dict__, sort_keys=True))
+        rawspecfile = specModelGenerator.transform_specmodel_to_rawspec(specModel)
+        print(json.dumps(remove_empty_fields(rawspecfile), default=lambda o: o.__dict__, sort_keys=True))
 
     if args.go_spec:
-        create_go_spec_model(json.dumps(remove_empty_fields(Specfile2), default=lambda o: o.__dict__, sort_keys=True))
+        goSpecModelGenerator.create_go_spec_model(json.dumps(remove_empty_fields(specModel), default=lambda o: o.__dict__, sort_keys=True))
 
         # print(json.dumps(GoSpecfile, default=lambda o: o.__dict__, sort_keys=True) + "\n\n")
-        # print(ruamel.yaml.dump(ruamel.yaml.safe_load(json.dumps(reduce_gospecfile(), default=lambda o: o.__dict__, sort_keys=True))))
+        # print(ruamel.yaml.dump(ruamel.yaml.safe_load(json.dumps(reduce_gospecmodel(), default=lambda o: o.__dict__, sort_keys=True))))
         
         if args.json:
             print(ruamel.yaml.round_trip_dump(ruamel.yaml.safe_load(
-                json.dumps(reduce_gospecfile(), default=lambda o: o.__dict__, sort_keys=True)),
+                json.dumps(goSpecModelGenerator.reduce_gospecmodel(), default=lambda o: o.__dict__, sort_keys=True)),
                                               default_flow_style=False, indent=4,
                                               block_seq_indent=2, width=80))
 
     # args.debug is set => read and process input specfile, transform into 2.0 and then back to 1.0
     if args.debug and args.model == 3:
-        Specfile2_from_gospec = transform_gospec_to_spec2(json.dumps(GoSpecfile, default=lambda o: o.__dict__, sort_keys=True))
-        print(json.dumps(remove_empty_fields(json.loads(Specfile2_from_gospec)), default=lambda o: o.__dict__, sort_keys=True))
+        specmodel_from_gospec = goSpecModelGenerator.transform_gospec_to_specmodel(json.dumps(goSpecModelGenerator.gospecmodel, default=lambda o: o.__dict__, sort_keys=True))
+        print(json.dumps(remove_empty_fields(json.loads(specmodel_from_gospec)), default=lambda o: o.__dict__, sort_keys=True))
 
 
 

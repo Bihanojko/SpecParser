@@ -9,7 +9,7 @@ from metastring import Metastring
 
 
 
-Specfile = SpecfileClass('Specfile 1.0')
+Specfile = SpecfileClass()
 metastring_list = []
 
 

@@ -36,27 +36,6 @@ class RawSpecFile(object):
 
 class SpecfileClass(object):
 
-    def __init__(self, class_type):
-
-        if class_type == 'Specfile 2.0':
-            self.HeaderTags = []
-            self.SectionTags = []
-            self.MacroDefinitions = []
-            self.MacroConditions = []
-            self.MacroUndefinitions = []
-            self.Comments = []
-            self.Conditions = []
-            self.metastring = ""
-            return
-
-        elif class_type == 'GO spec':
-            self.metadata = []
-            self.main_unit = []
-            self.unit_list = []
-            self.history = {}
-            self.comments = []
-            self.metastring = ""
-            return
-
+    def __init__(self):
         self.block_list = []
         self.metastring = ""
