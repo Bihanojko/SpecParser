@@ -1,10 +1,10 @@
 from __future__ import print_function
-import json
+import json, io
 from copy import deepcopy
 
 from abstract_model import SpecfileClass, BlockTypes, keys_list
 from abstract_model import prettyprint_headervalue_position, prettyprint_macroname_position
-from specparser import parse_file, open_file
+from specparser import RawSpecFileParser
 from metastring import Metastring
 
 
@@ -58,11 +58,28 @@ def json_to_specfile_class(json_containing_parsed_spec, predicate_list):
         else:
             Specfile.block_list.append(single_block)
 
+def open_file(input_filepath):
 
+    if input_filepath == None:
+        input_filepath = raw_input("Enter path to a specfile or json file: ")
+
+    try:
+        input_file = io.open(input_filepath, mode='r', encoding="utf-8")
+        input_data = input_file.read()
+        input_file.close()
+        return input_data
+    except IOError:
+        print('ERROR: Cannot open input file ' + input_filepath + '!')
+        sys.exit(3)
 
 def create_abstract_model(input_filepath):
 
-    json_containing_parsed_spec = json.loads(parse_file(input_filepath))
+    inputfile_content = open_file(input_filepath)
+    try:
+        json_containing_parsed_spec = json.loads(inputfile_content)
+    except ValueError, e:
+        parser = RawSpecFileParser(inputfile_content)
+        json_containing_parsed_spec = parser.parse().json()
 
     if 'metastring' in json_containing_parsed_spec and json_containing_parsed_spec['metastring'] != '':
         Specfile.block_list = json_containing_parsed_spec['block_list']
@@ -139,7 +156,7 @@ def pretty_print_block(intern_field, block_type, indentation):
         print('{' + intern_field['condition'], end='')
         if 'name' in intern_field and intern_field['name'] is not None:
             print(' ' + intern_field['name'] + ':', end='')
-        print_pretty_field(intern_field['content'], 0)            
+        print_pretty_field(intern_field['content'], 0)
         print('}\n', end='')
 
     elif block_type == BlockTypes.MacroUndefinitionType:
@@ -235,7 +252,7 @@ def print_field(block_list):
             elif intern_field['block_type'] == BlockTypes.SectionTagType:
                 counter = 0
 
-                for metastring in metastring_block_list[1:]:                    
+                for metastring in metastring_block_list[1:]:
                     if int(metastring[0]) == 0:
                         print('%', end='')
                     elif int(metastring[0]) == 2:
@@ -318,7 +335,7 @@ def reduce_inner_block(single_block):
                 for (index, single_record) in enumerate(value):
                     reduced_value[index] = reduce_inner_block(single_record)
 
-    return reduced_single_block               
+    return reduced_single_block
 
 
 def remove_empty_fields(Specfile):
