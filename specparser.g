@@ -2,14 +2,29 @@
 import json
 from abstract_model import RawSpecFile, BlockTypes
 
-class HeaderTagBlock(object):
+class Block(object):
+
+    def _filter(self, data):
+        return {k:v for k,v in data.items() if v != None and v != []}
+
+class HeaderTagBlock(Block):
     def __init__(self, key, content, option=None):
         self.block_type = BlockTypes.HeaderTagType
         self.key = key
         self.option = option
         self.content = content
+        self.AP = None
 
-class SectionBlock(object):
+    def to_json(self):
+        return self._filter({
+          "AP": self.AP,
+          "block_type": self.block_type,
+          "key": self.key,
+          "option": self.option,
+          "content": self.content,
+        })
+
+class SectionBlock(Block):
     def __init__(self, keyword, parameters, name, subname, content):
         self.block_type = BlockTypes.SectionTagType
         self.keyword = keyword
@@ -17,48 +32,122 @@ class SectionBlock(object):
         self.parameters = parameters
         self.subname = subname
         self.name = name
+        self.AP = None
 
-class PackageBlock(object):
+    def to_json(self):
+        return self._filter({
+          "AP": self.AP,
+          "block_type": self.block_type,
+          "keyword": self.keyword,
+          # TODO(jchaloup): Make sure the content of a general section is always a string
+          "content": self.content if isinstance(self.content, basestring) else map(lambda l: l.to_json(), self.content),
+          "parameters": self.parameters,
+          "subname": self.subname,
+          "name": self.name
+        })
+
+class PackageBlock(Block):
     def __init__(self, keyword, parameters, subname, content):
         self.block_type = BlockTypes.SectionTagType
         self.keyword = keyword
         self.content = content
         self.parameters = parameters
         self.subname = subname
+        self.name = None
+        self.AP = None
 
-class ChangelogBlock(object):
+    def to_json(self):
+        return self._filter({
+          "AP": self.AP,
+          "block_type": self.block_type,
+          "keyword": self.keyword,
+          "content": map(lambda l: l.to_json(), self.content),
+          "parameters": self.parameters,
+          "subname": self.subname
+        })
+
+class ChangelogBlock(Block):
     def __init__(self, keyword, content):
         self.block_type = BlockTypes.SectionTagType
         self.keyword = keyword
         self.content = content
+        self.AP = None
 
-class MacroDefinitionBlock(object):
+    def to_json(self):
+        return self._filter({
+          "AP": self.AP,
+          "block_type": self.block_type,
+          "keyword": self.keyword,
+          "content": self.content
+        })
+
+class MacroDefinitionBlock(Block):
     def __init__(self, name, keyword, options, body):
         self.block_type = BlockTypes.MacroDefinitionType
         self.name = name
         self.keyword = keyword
         self.options = options
         self.body = body
+        self.AP = None
 
-class MacroUndefinitionBlock(object):
+    def to_json(self):
+        return self._filter({
+          "AP": self.AP,
+          "block_type": self.block_type,
+          "name": self.name,
+          "keyword": self.keyword,
+          "options": self.options,
+          "body": self.body,
+        })
+
+class MacroUndefinitionBlock(Block):
     def __init__(self, name, keyword):
         self.block_type = BlockTypes.MacroUndefinitionType
         self.name = name
         self.keyword = keyword
+        self.AP = None
 
-class MacroConditionBlock(object):
-    def __init__(self, name, condition, content):
+    def to_json(self):
+        return self._filter({
+          "AP": self.AP,
+          "block_type": self.block_type,
+          "name": self.name,
+          "keyword": self.keyword
+        })
+
+class MacroConditionBlock(Block):
+    def __init__(self, name, condition, content, ending = None):
         self.block_type = BlockTypes.MacroConditionType
         self.name = name
         self.condition = condition
         self.content = content
+        self.ending = ending
+        self.AP = None
 
-class CommentBlock(object):
+    def to_json(self):
+        return self._filter({
+          "AP": self.AP,
+          "block_type": self.block_type,
+          "name": self.name,
+          "condition": self.condition,
+          "content": map(lambda l: l.to_json(), self.content),
+          "ending": self.ending,
+        })
+
+class CommentBlock(Block):
     def __init__(self, content):
         self.block_type = BlockTypes.CommentType
         self.content = content
+        self.AP = None
 
-class ConditionBlock(object):
+    def to_json(self):
+        return self._filter({
+          "AP": self.AP,
+          "block_type": self.block_type,
+          "content": self.content,
+        })
+
+class ConditionBlock(Block):
     def __init__(self, keyword, expression, content, else_body, end_keyword, else_keyword):
         self.block_type = BlockTypes.ConditionType
         self.keyword = keyword
@@ -66,7 +155,21 @@ class ConditionBlock(object):
         self.content = content
         self.else_body = else_body
         self.end_keyword = end_keyword
+        # If else keyword is None, the else_body is ignored
         self.else_keyword = else_keyword
+        self.AP = None
+
+    def to_json(self):
+        return self._filter({
+          "AP": self.AP,
+          "block_type": self.block_type,
+          "keyword": self.keyword,
+          "expression": self.expression,
+          "content": map(lambda l: l.to_json(), self.content),
+          "else_keyword": self.else_keyword,
+          "else_body": map(lambda l: l.to_json(), self.else_body),
+          "end_keyword": self.end_keyword,
+        })
 
 %%
 parser SpecfileParser:
@@ -270,3 +373,6 @@ class RawSpecFileParser(object):
 
   def json(self):
      return json.loads(json.dumps(self._rawSpecfile, default=lambda o: o.__dict__, sort_keys=True))
+
+  def raw(self):
+    return self._rawSpecfile

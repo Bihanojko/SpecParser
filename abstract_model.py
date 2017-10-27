@@ -12,7 +12,11 @@ class BlockTypes(object):
     ConditionType = 6
     ChangelogTagType = 7
 
+class BlockTypeMismatchException(Exception):
+    pass
 
+class BlockTypeUnknown(Exception):
+    pass
 
 keys_list = [
     ['key', 'option', 'content'],
