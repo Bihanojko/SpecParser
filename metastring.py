@@ -42,23 +42,43 @@ class KeyMetastring(object):
 
         return "{}%{}{}".format(self._left_ws, self._idx, self._right_ws)
 
-class HeaderTagMetastring(object):
+class BaseMetastring(object):
+    def __init__(self):
+        self._block_idx = None
+        self._model_type = -1
+
+    def fromBlockType(self, block):
+        if block.block_type != self._type:
+            # TODO(jchaloup): replace the block type number with a string name
+            raise BlockTypeMismatchException("Expected {}, got {} instead".format(self._type, block.block_type))
+
+        for i, key in enumerate(self._order):
+            self.__dict__["_{}".format(key)] = KeyMetastring().fromBlock(block.__dict__[key], i)
+
+        return self
+
+    def setBlockIdx(self, model_type, idx = 0):
+        self._model_type = model_type
+        self._block_idx = idx
+
+    def to_str(self):
+        metastring = "#"
+        if self._block_idx != None:
+            metastring += "{}:{}:".format(self._model_type, self._block_idx)
+
+        for key in self._order:
+            metastring += self.__dict__["_{}".format(key)].to_str()
+        return metastring
+
+class HeaderTagMetastring(BaseMetastring):
     def __init__(self):
         self._type = BlockTypes.HeaderTagType
         self._key = None
         self._option = None
         self._content = None
+        self._block_idx = None
 
-    def fromBlockType(self, block):
-        if block.block_type != BlockTypes.HeaderTagType:
-            # TODO(jchaloup): replace the block type number with a string name
-            raise BlockTypeMismatchException("Expected HeaderTagType, got {} instead".format(block.block_type))
-
-        self._key = KeyMetastring().fromBlock(block.key, 0)
-        self._option = KeyMetastring().fromBlock(block.option, 1)
-        self._content = KeyMetastring().fromBlock(block.content, 2)
-
-        return self
+        self._order = ["key", "option", "content"]
 
     def cleanBlockType(self, block):
         return HeaderTagBlock(
@@ -67,13 +87,7 @@ class HeaderTagMetastring(object):
             KeyMetastring.cleanBlock(block.option)
         )
 
-    def to_str(self):
-        metastring = ""
-        for ms in [self._key, self._option, self._content]:
-            metastring += ms.to_str()
-        return metastring
-
-class SectionMetastring(object):
+class SectionMetastring(BaseMetastring):
     def __init__(self):
         self._type = BlockTypes.SectionTagType
         self._keyword = None
@@ -83,23 +97,11 @@ class SectionMetastring(object):
         self._name = None
         self._section_type = ""
 
+        self._order = ["keyword", "name", "parameters", "subname", "content"]
+
     def fromBlockType(self, block):
-        if block.block_type != BlockTypes.SectionTagType:
-            # TODO(jchaloup): replace the block type number with a string name
-            raise BlockTypeMismatchException("Expected SectionTagType, got {} instead".format(block.block_type))
-
-        self._keyword = KeyMetastring().fromBlock(block.keyword, 0)
-        # Given the section keyword is not checked, its content can be basically anything.
-        # Either string, array, dictionary. However, only the string content
-        # can be metastringed and the current implemention of the metastring extraction
-        # skips all non-string contents. So the section metastring gets extracted
-        # before its non-string content is processed.
-        self._name = KeyMetastring().fromBlock(block.name, 1)
-        self._parameters = KeyMetastring().fromBlock(block.parameters, 2)
-        self._subname = KeyMetastring().fromBlock(block.subname, 3)
-        self._content = KeyMetastring().fromBlock(block.content, 4)
+        BaseMetastring.fromBlockType(self, block)
         self._section_type = block.keyword.strip()
-
         return self
 
     def cleanBlockType(self, block):
@@ -112,15 +114,13 @@ class SectionMetastring(object):
         )
 
     def to_str(self):
-        metastring = ""
-        for ms in [self._keyword, self._name, self._parameters, self._subname, self._content]:
-            metastring += ms.to_str()
+        metastring = BaseMetastring.to_str(self)
         # TODO(jchaloup): why do we need this?
         if self._section_type == "package":
             metastring += "%4"
         return metastring
 
-class ConditionMetastring(object):
+class ConditionMetastring(BaseMetastring):
     def __init__(self):
         self._type = BlockTypes.ConditionType
         self._keyword = None
@@ -130,19 +130,7 @@ class ConditionMetastring(object):
         self._end_keyword = None
         self._else_keyword = None
 
-    def fromBlockType(self, block):
-        if block.block_type != BlockTypes.ConditionType:
-            # TODO(jchaloup): replace the block type number with a string name
-            raise BlockTypeMismatchException("Expected ConditionType, got {} instead".format(block.block_type))
-
-        self._keyword = KeyMetastring().fromBlock(block.keyword, 0)
-        self._expression = KeyMetastring().fromBlock(block.expression, 1)
-        self._content = KeyMetastring().fromBlock(block.content, 2)
-        self._else_keyword = KeyMetastring().fromBlock(block.else_keyword, 3)
-        self._else_body = KeyMetastring().fromBlock(block.else_body, 4)
-        self._end_keyword = KeyMetastring().fromBlock(block.end_keyword, 5)
-
-        return self
+        self._order = ["keyword", "expression", "content", "else_keyword", "else_body", "end_keyword"]
 
     def cleanBlockType(self, block):
         return ConditionBlock(
@@ -154,13 +142,7 @@ class ConditionMetastring(object):
             KeyMetastring.cleanBlock(block.else_keyword)
         )
 
-    def to_str(self):
-        metastring = ""
-        for ms in [self._keyword, self._expression, self._content, self._else_keyword, self._else_body, self._end_keyword]:
-            metastring += ms.to_str()
-        return metastring
-
-class MacroConditionMetastring(object):
+class MacroConditionMetastring(BaseMetastring):
     def __init__(self):
         self._type = BlockTypes.MacroConditionType
         self._condition = None
@@ -168,17 +150,7 @@ class MacroConditionMetastring(object):
         self._content = None
         self._ending = None
 
-    def fromBlockType(self, block):
-        if block.block_type != BlockTypes.MacroConditionType:
-            # TODO(jchaloup): replace the block type number with a string name
-            raise BlockTypeMismatchException("Expected MacroConditionType, got {} instead".format(block.block_type))
-
-        self._condition = KeyMetastring().fromBlock(block.condition, 0)
-        self._name = KeyMetastring().fromBlock(block.name, 1)
-        self._content = KeyMetastring().fromBlock(block.content, 2)
-        self._ending = KeyMetastring().fromBlock(block.ending, 3)
-
-        return self
+        self._order = ["condition", "name", "content", "ending"]
 
     def cleanBlockType(self, block):
         return MacroConditionBlock(
@@ -188,13 +160,7 @@ class MacroConditionMetastring(object):
             KeyMetastring.cleanBlock(block.ending)
         )
 
-    def to_str(self):
-        metastring = ""
-        for ms in [self._condition, self._name, self._content, self._ending]:
-            metastring += ms.to_str()
-        return metastring
-
-class MacroDefinitionMetastring(object):
+class MacroDefinitionMetastring(BaseMetastring):
     def __init__(self):
         self._type = BlockTypes.MacroDefinitionType
         self._keyword = None
@@ -202,17 +168,7 @@ class MacroDefinitionMetastring(object):
         self._options = None
         self._body = None
 
-    def fromBlockType(self, block):
-        if block.block_type != BlockTypes.MacroDefinitionType:
-            # TODO(jchaloup): replace the block type number with a string name
-            raise BlockTypeMismatchException("Expected MacroDefinitionType, got {} instead".format(block.block_type))
-
-        self._keyword = KeyMetastring().fromBlock(block.keyword, 0)
-        self._name = KeyMetastring().fromBlock(block.name, 1)
-        self._options = KeyMetastring().fromBlock(block.options, 2)
-        self._body = KeyMetastring().fromBlock(block.body, 3)
-
-        return self
+        self._order = ["keyword", "name", "options", "body"]
 
     def cleanBlockType(self, block):
         return MacroDefinitionBlock(
@@ -222,52 +178,32 @@ class MacroDefinitionMetastring(object):
             KeyMetastring.cleanBlock(block.body)
         )
 
-    def to_str(self):
-        metastring = ""
-        for ms in [self._keyword, self._name, self._options, self._body]:
-            metastring += ms.to_str()
-        return metastring
-
-class CommentMetastring(object):
+class CommentMetastring(BaseMetastring):
     def __init__(self):
         self._type = BlockTypes.CommentType
         self._content = None
 
-    def fromBlockType(self, block):
-        if block.block_type != BlockTypes.CommentType:
-            # TODO(jchaloup): replace the block type number with a string name
-            raise BlockTypeMismatchException("Expected CommentType, got {} instead".format(block.block_type))
-
-        self._content = KeyMetastring().fromBlock(block.content, 0)
-
-        return self
+        self._order = ["content"]
 
     def cleanBlockType(self, block):
         return CommentBlock(
             KeyMetastring.cleanBlock(block.content),
         )
 
-    def to_str(self):
-        metastring = ""
-        for ms in [self._content]:
-            metastring += ms.to_str()
-        return metastring
-
-class ChangelogMetastring(object):
+class ChangelogMetastring(BaseMetastring):
     def __init__(self):
-        self._type = BlockTypes.ChangelogTagType
+        self._type = BlockTypes.SectionTagType
         self._keyword = None
         self._content = []
 
+        self._order = ["keyword"]
+
     def fromBlockType(self, block):
-        if block.block_type != BlockTypes.SectionTagType:
-            # TODO(jchaloup): replace the block type number with a string name
-            raise BlockTypeMismatchException("Expected ChangelogTagType, got {} instead".format(block.block_type))
+        BaseMetastring.fromBlockType(self, block)
 
         if not isinstance(block.content, list):
             raise TypeError("Expected Changelog content to be a list, got {} instead".format(type(block.content)))
 
-        self._keyword = KeyMetastring().fromBlock(block.keyword, 0)
         for item in block.content:
             self._content.append( KeyMetastring().fromBlock(item, 4) )
 
@@ -284,8 +220,8 @@ class ChangelogMetastring(object):
         )
 
     def to_str(self):
-        metastring = ""
-        for ms in [self._keyword] + self._content:
+        metastring = BaseMetastring.to_str(self)
+        for ms in self._content:
             metastring += ms.to_str()
         return metastring
 
