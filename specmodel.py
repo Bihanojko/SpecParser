@@ -41,13 +41,12 @@ class ModelTypes:
     Changelog = 12
 
 class SpecModel(object):
+
     def __init__(self):
-        # metastring extraction from a raw specfile
-        self._block_list = []
         self._beginning = ""
         self._metastrings = []
         self._end = ""
-        # abstract specfile modeling
+
         self._metadata_tags = []
         self._metadata_macros = []
         self._packages = []
@@ -59,8 +58,112 @@ class SpecModel(object):
         self._check = {}
         self._changelog = {}
         self._other_sections = []
-        self._conditioner_table = []
-        self._comments_table = []
+        self._conditions = []
+        self._comments = []
+
+    def addTag(self, data):
+        idx = len(self._metadata_tags)
+        self._metadata_tags.append(data)
+        return idx
+
+    def getTag(self, idx):
+        return self._metadata_tags[idx]
+
+    def addMacro(self, data):
+        idx = len(self._metadata_macros)
+        self._metadata_macros.append(data)
+        return idx
+
+    def getMacro(self, idx):
+        return self._metadata_macros[idx]
+
+    def addPackage(self, data):
+        idx = len(self._packages)
+        self._packages.append(data)
+        return idx
+
+    def getPackage(self, idx):
+        return self._packages[idx]
+
+    def addDescription(self, data):
+        idx = len(self._descriptions)
+        self._descriptions.append(data)
+        return idx
+
+    def getDescription(self, idx):
+        return self._descriptions[idx]
+
+    def addFiles(self, data):
+        idx = len(self._files)
+        self._files.append(data)
+        return idx
+
+    def getFiles(self, idx):
+        return self._files[idx]
+
+    def setPrep(self, data):
+        self._prep = data
+
+    def getPrep(self):
+        return self._prep
+
+    def setBuild(self, data):
+        self._build = data
+
+    def getBuild(self):
+        return self._build
+
+    def setInstall(self, data):
+        self._install = data
+
+    def getInstall(self):
+        return self._install
+
+    def setCheck(self, data):
+        self._check = data
+
+    def getCheck(self):
+        return self._check
+
+    def setChangelog(self, data):
+        self._changelog = data
+
+    def getChangelog(self):
+        return self._changelog
+
+    def addSection(self, data):
+        idx = len(self._other_sections)
+        self._other_sections.append(data)
+        return idx
+
+    def getSection(self, idx):
+        return self._other_sections[idx]
+
+    def addCondition(self, data):
+        idx = len(self._conditions)
+        self._conditions.append(data)
+        return idx
+
+    def getCondition(self, idx):
+        return self._conditions[idx]
+
+    def addComment(self, data):
+        idx = len(self._comments)
+        self._comments.append(data)
+        return idx
+
+    def getComment(self, idx):
+        return self._comments[idx]
+
+class SpecModelGenerator(object):
+    def __init__(self):
+        # metastring extraction from a raw specfile
+        self._block_list = []
+        self._beginning = ""
+        self._metastrings = []
+        self._end = ""
+        # abstract specfile modeling
+        self._spec_model = SpecModel()
 
     def fromRawSpecfile(self, raw):
         self._beginning = raw.beginning
@@ -188,35 +291,31 @@ class SpecModel(object):
         ms_idx = 0
         for i, block in enumerate(block_list):
             if block.block_type == BlockTypes.MacroDefinitionType:
-                metastrings[ms_idx].setBlockIdx(ModelTypes.Macros, len(self._metadata_macros))
-                self._metadata_macros.append(block)
+                metastrings[ms_idx].setBlockIdx(ModelTypes.Macros, self._spec_model.addMacro(block))
                 ms_idx += 1
                 continue
 
             if block.block_type == BlockTypes.MacroConditionType:
                 # TODO(jchaloup): Should it be under the macros or under its own category?
-                metastrings[ms_idx].setBlockIdx(ModelTypes.Macros, len(self._metadata_macros))
-                self._metadata_macros.append(block)
+                metastrings[ms_idx].setBlockIdx(ModelTypes.Macros, self._spec_model.addMacro(block))
                 if block.content != []:
                     self._toAbstractModel(metastrings[ms_idx].getContentMetastring(), block.content)
                 ms_idx += 1
                 continue
 
             if block.block_type == BlockTypes.CommentType:
-                metastrings[ms_idx].setBlockIdx(ModelTypes.Comment, len(self._comments_table))
-                self._comments_table.append(block)
+                metastrings[ms_idx].setBlockIdx(ModelTypes.Comment, self._spec_model.addComment(block))
                 ms_idx += 1
                 continue
 
             if block.block_type == BlockTypes.HeaderTagType:
-                metastrings[ms_idx].setBlockIdx(ModelTypes.Tag, len(self._metadata_tags))
-                self._metadata_tags.append(block)
+                idx = self._spec_model.addTag(block)
+                metastrings[ms_idx].setBlockIdx(ModelTypes.Tag, idx)
                 ms_idx += 1
                 continue
 
             if block.block_type == BlockTypes.ConditionType:
-                metastrings[ms_idx].setBlockIdx(ModelTypes.Condition, len(self._conditioner_table))
-                self._conditioner_table.append(block.expression)
+                metastrings[ms_idx].setBlockIdx(ModelTypes.Condition, self._spec_model.addCondition(block.expression))
                 # TODO(jchaloup): distribute the APs properly
                 if block.content != []:
                     self._toAbstractModel(metastrings[ms_idx].getIfBodyMetastring(), block.content)
@@ -226,8 +325,7 @@ class SpecModel(object):
                 continue
 
             if block.block_type == BlockTypes.PackageTagType:
-                metastrings[ms_idx].setBlockIdx(ModelTypes.Package, len(self._packages))
-                self._packages.append(block)
+                metastrings[ms_idx].setBlockIdx(ModelTypes.Package, self._spec_model.addPackage(block))
                 if block.content != []:
                     self._toAbstractModel(metastrings[ms_idx].getContentMetastring(), block.content)
                 ms_idx += 1
@@ -235,44 +333,41 @@ class SpecModel(object):
 
             if block.block_type == BlockTypes.ChangelogTagType:
                 metastrings[ms_idx].setBlockIdx(ModelTypes.Changelog)
-                self._changelog = block
+                self._spec_model.setChangelog(block)
                 ms_idx += 1
                 continue
 
             if block.block_type == BlockTypes.SectionTagType:
                 if block.keyword == "description":
-                    metastrings[ms_idx].setBlockIdx(ModelTypes.Description, len(self._descriptions))
-                    self._descriptions.append(block)
+                    metastrings[ms_idx].setBlockIdx(ModelTypes.Description, self._spec_model.addDescription(block))
                     ms_idx += 1
                     continue
                 if block.keyword == "files":
-                    metastrings[ms_idx].setBlockIdx(ModelTypes.Files, len(self._files))
-                    self._files.append(block)
+                    metastrings[ms_idx].setBlockIdx(ModelTypes.Files, self._spec_model.addFiles(block))
                     ms_idx += 1
                     continue
                 if block.keyword == "prep":
                     metastrings[ms_idx].setBlockIdx(ModelTypes.Prep)
-                    self._prep = block
+                    self._spec_model.setPrep(block)
                     ms_idx += 1
                     continue
                 if block.keyword == "build":
                     metastrings[ms_idx].setBlockIdx(ModelTypes.Build)
-                    self._build = block
+                    self._spec_model.setBuild(block)
                     ms_idx += 1
                     continue
                 if block.keyword == "install":
                     metastrings[ms_idx].setBlockIdx(ModelTypes.Install)
-                    self._install = block
+                    self._spec_model.setInstall(block)
                     ms_idx += 1
                     continue
                 if block.keyword == "check":
                     metastrings[ms_idx].setBlockIdx(ModelTypes.Check)
-                    self._check = block
+                    self._spec_model.setCheck(block)
                     ms_idx += 1
                     continue
 
-                metastrings[ms_idx].setBlockIdx(ModelTypes.OtherSection, len(self._other_sections))
-                self._other_sections.append(block)
+                metastrings[ms_idx].setBlockIdx(ModelTypes.OtherSection, self._spec_model.addSection(block))
                 ms_idx += 1
                 continue
 
@@ -314,7 +409,7 @@ class SpecModel(object):
     def _generate_spec(self, metastrings):
         for metastring in metastrings:
             if metastring.modelType() == ModelTypes.Condition:
-                expression = self._conditioner_table[metastring.blockIdx()]
+                expression = self._conditions[metastring.blockIdx()]
                 print metastring
                 print metastring.blockIdx()
 

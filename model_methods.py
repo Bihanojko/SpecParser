@@ -6,7 +6,7 @@ from abstract_model import SpecfileClass, BlockTypes, keys_list
 from abstract_model import prettyprint_headervalue_position, prettyprint_macroname_position, BlockTypeUnknown
 from specparser import RawSpecFileParser
 from metastring import Metastring
-from specmodel import SpecModel
+from specmodel import SpecModelGenerator
 
 Specfile = SpecfileClass()
 metastring_list = []
@@ -39,7 +39,7 @@ def create_abstract_model(input_filepath):
         Specfile.block_list = json_containing_parsed_spec['block_list']
         Specfile.metastring = json_containing_parsed_spec['metastring']
     else:
-        spec_model = SpecModel().fromRawSpecfile(raw)
+        spec_model = SpecModelGenerator().fromRawSpecfile(raw)
         data = spec_model.model_to_json()
         Specfile.metastring = data["metastring"]
         Specfile.block_list = json.loads(json.dumps(data["block_list"], sort_keys=True))
