@@ -1,7 +1,7 @@
 import re
 
 from abstract_model import keys_list, BlockTypes, BlockTypeMismatchException
-from specparser import HeaderTagBlock, ChangelogBlock, SectionBlock, ConditionBlock, MacroConditionBlock, MacroDefinitionBlock, CommentBlock
+from specparser import HeaderTagBlock, ChangelogBlock, SectionBlock, ConditionBlock, MacroConditionBlock, MacroDefinitionBlock, CommentBlock, PackageBlock
 
 class KeyMetastring(object):
     def __init__(self):
@@ -46,20 +46,17 @@ class BaseMetastring(object):
     def __init__(self):
         self._block_idx = None
         self._model_type = -1
-
-    def fromBlockType(self, block):
-        if block.block_type != self._type:
-            # TODO(jchaloup): replace the block type number with a string name
-            raise BlockTypeMismatchException("Expected {}, got {} instead".format(self._type, block.block_type))
-
-        for i, key in enumerate(self._order):
-            self.__dict__["_{}".format(key)] = KeyMetastring().fromBlock(block.__dict__[key], i)
-
-        return self
+        self._block_idx = None
 
     def setBlockIdx(self, model_type, idx = 0):
         self._model_type = model_type
         self._block_idx = idx
+
+    def blockIdx(self):
+        return self._block_idx
+
+    def modelType(self):
+        return self._model_type
 
     def to_str(self):
         metastring = "#"
@@ -67,20 +64,40 @@ class BaseMetastring(object):
             metastring += "{}:{}:".format(self._model_type, self._block_idx)
 
         for key in self._order:
+            if isinstance(self.__dict__["_{}".format(key)], list):
+                for item in self.__dict__["_{}".format(key)]:
+                    metastring += item.to_str()
+                continue
             metastring += self.__dict__["_{}".format(key)].to_str()
         return metastring
 
+    def to_json(self):
+        data = {"type": self._model_type, "idx": self._block_idx}
+        for key in self._order:
+            if isinstance(self.__dict__["_{}".format(key)], list):
+                data[key] = []
+                for item in self.__dict__["_{}".format(key)]:
+                    if isinstance(item, KeyMetastring):
+                        data[key].append(item.to_str())
+                    else:
+                        data[key].append(item.to_json())
+                continue
+            data[key] = self.__dict__["_{}".format(key)].to_str()
+        return data
+
 class HeaderTagMetastring(BaseMetastring):
-    def __init__(self):
+    def __init__(self, key, option, content):
+        BaseMetastring.__init__(self)
         self._type = BlockTypes.HeaderTagType
-        self._key = None
-        self._option = None
-        self._content = None
+        self._key = KeyMetastring().fromBlock(key, 0)
+        self._option = KeyMetastring().fromBlock(option, 1)
+        self._content = KeyMetastring().fromBlock(content, 2)
         self._block_idx = None
 
         self._order = ["key", "option", "content"]
 
-    def cleanBlockType(self, block):
+    @staticmethod
+    def cleanBlockType(block):
         return HeaderTagBlock(
             KeyMetastring.cleanBlock(block.key),
             KeyMetastring.cleanBlock(block.content),
@@ -88,23 +105,19 @@ class HeaderTagMetastring(BaseMetastring):
         )
 
 class SectionMetastring(BaseMetastring):
-    def __init__(self):
+    def __init__(self, keyword, parameters, name, subname, content):
+        BaseMetastring.__init__(self)
         self._type = BlockTypes.SectionTagType
-        self._keyword = None
-        self._content = None
-        self._parameters = None
-        self._subname = None
-        self._name = None
-        self._section_type = ""
+        self._keyword = KeyMetastring().fromBlock(keyword, 0)
+        self._content = KeyMetastring().fromBlock(content, 4)
+        self._parameters = KeyMetastring().fromBlock(parameters, 2)
+        self._subname = KeyMetastring().fromBlock(subname, 3)
+        self._name = KeyMetastring().fromBlock(name, 1)
 
         self._order = ["keyword", "name", "parameters", "subname", "content"]
 
-    def fromBlockType(self, block):
-        BaseMetastring.fromBlockType(self, block)
-        self._section_type = block.keyword.strip()
-        return self
-
-    def cleanBlockType(self, block):
+    @staticmethod
+    def cleanBlockType(block):
         return SectionBlock(
             KeyMetastring.cleanBlock(block.keyword),
             KeyMetastring.cleanBlock(block.parameters),
@@ -113,46 +126,87 @@ class SectionMetastring(BaseMetastring):
             KeyMetastring.cleanBlock(block.content)
         )
 
-    def to_str(self):
-        metastring = BaseMetastring.to_str(self)
-        # TODO(jchaloup): why do we need this?
-        if self._section_type == "package":
-            metastring += "%4"
-        return metastring
+class PackageMetastring(BaseMetastring):
+    def __init__(self, keyword, parameters, subname):
+        BaseMetastring.__init__(self)
+        self._type = BlockTypes.SectionTagType
+        self._keyword = KeyMetastring().fromBlock(keyword, 0)
+        self._content = []
+        self._parameters = KeyMetastring().fromBlock(parameters, 1)
+        self._subname = KeyMetastring().fromBlock(subname, 2)
+
+        self._order = ["keyword", "parameters", "subname", "content"]
+
+    def setContentMetastring(self, metastring):
+        self._content = metastring
+
+    def getContentMetastring(self):
+        return self._content
+
+    @staticmethod
+    def cleanBlockType(block):
+        return PackageBlock(
+            KeyMetastring.cleanBlock(block.keyword),
+            KeyMetastring.cleanBlock(block.parameters),
+            KeyMetastring.cleanBlock(block.subname),
+            block.content
+        )
 
 class ConditionMetastring(BaseMetastring):
-    def __init__(self):
+    def __init__(self, keyword, expression, end_keyword, else_keyword = ""):
+        BaseMetastring.__init__(self)
         self._type = BlockTypes.ConditionType
-        self._keyword = None
-        self._expression = None
-        self._content = None
-        self._else_body = None
-        self._end_keyword = None
-        self._else_keyword = None
+        self._keyword = KeyMetastring().fromBlock(keyword, 0)
+        self._expression = KeyMetastring().fromBlock(expression, 1)
+        self._content = []
+        self._else_body = []
+        self._end_keyword = KeyMetastring().fromBlock(end_keyword, 5)
+        self._else_keyword = KeyMetastring().fromBlock(else_keyword, 3)
 
         self._order = ["keyword", "expression", "content", "else_keyword", "else_body", "end_keyword"]
 
-    def cleanBlockType(self, block):
+    def setIfBodyMetastring(self, body):
+        self._content = body
+
+    def getIfBodyMetastring(self):
+        return self._content
+
+    def setElseBodyMetastring(self, body):
+        self._else_body = body
+
+    def getElseBodyMetastring(self):
+        return self._else_body
+
+    @staticmethod
+    def cleanBlockType(block):
         return ConditionBlock(
             KeyMetastring.cleanBlock(block.keyword),
             KeyMetastring.cleanBlock(block.expression),
-            KeyMetastring.cleanBlock(block.content),
-            KeyMetastring.cleanBlock(block.else_body),
+            block.content,
+            block.else_body,
             KeyMetastring.cleanBlock(block.end_keyword),
             KeyMetastring.cleanBlock(block.else_keyword)
         )
 
 class MacroConditionMetastring(BaseMetastring):
-    def __init__(self):
+    def __init__(self, condition, name, ending):
+        BaseMetastring.__init__(self)
         self._type = BlockTypes.MacroConditionType
-        self._condition = None
-        self._name = None
+        self._condition = KeyMetastring().fromBlock(condition, 0)
+        self._name = KeyMetastring().fromBlock(name, 1)
         self._content = None
-        self._ending = None
+        self._ending = KeyMetastring().fromBlock(ending, 3)
 
         self._order = ["condition", "name", "content", "ending"]
 
-    def cleanBlockType(self, block):
+    def setContentMetastring(self, metastring):
+        self._content = metastring
+
+    def getContentMetastring(self):
+        return self._content
+
+    @staticmethod
+    def cleanBlockType(block):
         return MacroConditionBlock(
             KeyMetastring.cleanBlock(block.name),
             KeyMetastring.cleanBlock(block.condition),
@@ -161,16 +215,18 @@ class MacroConditionMetastring(BaseMetastring):
         )
 
 class MacroDefinitionMetastring(BaseMetastring):
-    def __init__(self):
+    def __init__(self, keyword, name, options, body):
+        BaseMetastring.__init__(self)
         self._type = BlockTypes.MacroDefinitionType
-        self._keyword = None
-        self._name = None
-        self._options = None
-        self._body = None
+        self._keyword = KeyMetastring().fromBlock(keyword, 0)
+        self._name = KeyMetastring().fromBlock(name, 1)
+        self._options = KeyMetastring().fromBlock(options, 2)
+        self._body = KeyMetastring().fromBlock(body, 3)
 
         self._order = ["keyword", "name", "options", "body"]
 
-    def cleanBlockType(self, block):
+    @staticmethod
+    def cleanBlockType(block):
         return MacroDefinitionBlock(
             KeyMetastring.cleanBlock(block.name),
             KeyMetastring.cleanBlock(block.keyword),
@@ -179,37 +235,32 @@ class MacroDefinitionMetastring(BaseMetastring):
         )
 
 class CommentMetastring(BaseMetastring):
-    def __init__(self):
+    def __init__(self, content):
+        BaseMetastring.__init__(self)
         self._type = BlockTypes.CommentType
-        self._content = None
+        self._content = KeyMetastring().fromBlock(content, 0)
 
         self._order = ["content"]
 
-    def cleanBlockType(self, block):
+    @staticmethod
+    def cleanBlockType(block):
         return CommentBlock(
             KeyMetastring.cleanBlock(block.content),
         )
 
 class ChangelogMetastring(BaseMetastring):
-    def __init__(self):
+    def __init__(self, keyword, content):
+        BaseMetastring.__init__(self)
         self._type = BlockTypes.SectionTagType
-        self._keyword = None
+        self._keyword = KeyMetastring().fromBlock(keyword, 0)
         self._content = []
-
-        self._order = ["keyword"]
-
-    def fromBlockType(self, block):
-        BaseMetastring.fromBlockType(self, block)
-
-        if not isinstance(block.content, list):
-            raise TypeError("Expected Changelog content to be a list, got {} instead".format(type(block.content)))
-
-        for item in block.content:
+        for item in content:
             self._content.append( KeyMetastring().fromBlock(item, 4) )
 
-        return self
+        self._order = ["keyword", "content"]
 
-    def cleanBlockType(self, block):
+    @staticmethod
+    def cleanBlockType(block):
         content = []
         for item in block.content:
             content.append(KeyMetastring.cleanBlock(item))
@@ -218,13 +269,6 @@ class ChangelogMetastring(BaseMetastring):
             KeyMetastring.cleanBlock(block.keyword),
             KeyMetastring.cleanBlock(content)
         )
-
-    def to_str(self):
-        metastring = BaseMetastring.to_str(self)
-        for ms in self._content:
-            metastring += ms.to_str()
-        return metastring
-
 
 class Metastring(object):
     """Class containing metastring creation and manipulation operations."""

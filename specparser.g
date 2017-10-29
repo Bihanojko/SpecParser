@@ -48,12 +48,11 @@ class SectionBlock(Block):
 
 class PackageBlock(Block):
     def __init__(self, keyword, parameters, subname, content):
-        self.block_type = BlockTypes.SectionTagType
+        self.block_type = BlockTypes.PackageTagType
         self.keyword = keyword
         self.content = content
         self.parameters = parameters
         self.subname = subname
-        self.name = None
         self.AP = None
 
     def to_json(self):
@@ -68,7 +67,7 @@ class PackageBlock(Block):
 
 class ChangelogBlock(Block):
     def __init__(self, keyword, content):
-        self.block_type = BlockTypes.SectionTagType
+        self.block_type = BlockTypes.ChangelogTagType
         self.keyword = keyword
         self.content = content
         self.AP = None

@@ -1,5 +1,5 @@
-from abstract_model import BlockTypes
-from metastring import HeaderTagMetastring, SectionMetastring, ConditionMetastring, MacroConditionMetastring, MacroDefinitionMetastring, CommentMetastring, ChangelogMetastring
+from abstract_model import BlockTypes, BlockTypeUnknown
+from metastring import HeaderTagMetastring, SectionMetastring, ConditionMetastring, MacroConditionMetastring, MacroDefinitionMetastring, CommentMetastring, ChangelogMetastring, PackageMetastring
 
 # Condition-free layout of a specfile 2.0
 #
@@ -66,10 +66,8 @@ class SpecModel(object):
         self._beginning = raw.beginning
         self._end = raw.end
         self._block_list, self._metastrings = self._processBlockList(raw.block_list)
-
         self._toAbstractModel(self._metastrings, self._block_list)
-        #import json
-        #print(json.dumps(self.metastrings_to_json()))
+        #self.to_spec()
         #exit(1)
 
         return self
@@ -81,8 +79,8 @@ class SpecModel(object):
         for single_block in block_list:
 
             if single_block.block_type == BlockTypes.HeaderTagType:
-                generated_metastrings.append( HeaderTagMetastring().fromBlockType(single_block) )
-                clean_block = HeaderTagMetastring().cleanBlockType(single_block)
+                generated_metastrings.append( HeaderTagMetastring(single_block.key, single_block.content, single_block.option) )
+                clean_block = HeaderTagMetastring.cleanBlockType(single_block)
                 if predicate_list != []:
                     # TODO(jchaloup): register the AP in the conditioner table as well
                     clean_block.AP = predicate_list
@@ -90,8 +88,8 @@ class SpecModel(object):
                 continue
 
             if single_block.block_type == BlockTypes.CommentType:
-                generated_metastrings.append( CommentMetastring().fromBlockType(single_block) )
-                clean_block = CommentMetastring().cleanBlockType(single_block)
+                generated_metastrings.append( CommentMetastring(single_block.content) )
+                clean_block = CommentMetastring.cleanBlockType(single_block)
                 if predicate_list != []:
                     # TODO(jchaloup): register the AP in the conditioner table as well
                     clean_block.AP = predicate_list
@@ -99,8 +97,34 @@ class SpecModel(object):
                 continue
 
             if single_block.block_type == BlockTypes.MacroDefinitionType:
-                generated_metastrings.append( MacroDefinitionMetastring().fromBlockType(single_block) )
-                clean_block = MacroDefinitionMetastring().cleanBlockType(single_block)
+                metastring = MacroDefinitionMetastring(single_block.keyword, single_block.name, single_block.options, single_block.body)
+                generated_metastrings.append( metastring )
+                clean_block = MacroDefinitionMetastring.cleanBlockType(single_block)
+                if predicate_list != []:
+                    # TODO(jchaloup): register the AP in the conditioner table as well
+                    clean_block.AP = predicate_list
+                processed_blocks.append(clean_block)
+                continue
+
+            if single_block.block_type == BlockTypes.PackageTagType:
+                clean_block = PackageMetastring.cleanBlockType(single_block)
+                metastring = PackageMetastring(single_block.keyword, single_block.parameters, single_block.subname)
+
+                if single_block.content != []:
+                    clean_block.content, metastring_children = self._processBlockList(single_block.content, predicate_list)
+                    metastring.setContentMetastring(metastring_children)
+
+                generated_metastrings.append( metastring )
+
+                if predicate_list != []:
+                    # TODO(jchaloup): register the AP in the conditioner table as well
+                    clean_block.AP = predicate_list
+                processed_blocks.append(clean_block)
+                continue
+
+            if single_block.block_type == BlockTypes.ChangelogTagType:
+                generated_metastrings.append( ChangelogMetastring(single_block.keyword, single_block.content) )
+                clean_block = ChangelogMetastring.cleanBlockType(single_block)
                 if predicate_list != []:
                     # TODO(jchaloup): register the AP in the conditioner table as well
                     clean_block.AP = predicate_list
@@ -108,31 +132,8 @@ class SpecModel(object):
                 continue
 
             if single_block.block_type == BlockTypes.SectionTagType:
-                if single_block.keyword.strip() == "changelog":
-                    generated_metastrings.append( ChangelogMetastring().fromBlockType(single_block) )
-                    clean_block = ChangelogMetastring().cleanBlockType(single_block)
-                    if predicate_list != []:
-                        # TODO(jchaloup): register the AP in the conditioner table as well
-                        clean_block.AP = predicate_list
-                    processed_blocks.append(clean_block)
-                    continue
-
-                if single_block.keyword.strip() == "package":
-                    clean_block = SectionMetastring().cleanBlockType(single_block)
-                    generated_metastrings.append( SectionMetastring().fromBlockType(single_block) )
-
-                    if single_block.content != []:
-                        clean_block.content, metastring_children = self._processBlockList(single_block.content, predicate_list)
-                        generated_metastrings.append(metastring_children)
-
-                    if predicate_list != []:
-                        # TODO(jchaloup): register the AP in the conditioner table as well
-                        clean_block.AP = predicate_list
-                    processed_blocks.append(clean_block)
-                    continue
-
-                generated_metastrings.append( SectionMetastring().fromBlockType(single_block) )
-                clean_block = SectionMetastring().cleanBlockType(single_block)
+                generated_metastrings.append( SectionMetastring(single_block.keyword, single_block.parameters, single_block.name, single_block.subname, single_block.content) )
+                clean_block = SectionMetastring.cleanBlockType(single_block)
                 if predicate_list != []:
                     # TODO(jchaloup): register the AP in the conditioner table as well
                     clean_block.AP = predicate_list
@@ -140,15 +141,17 @@ class SpecModel(object):
                 continue
 
             if single_block.block_type == BlockTypes.ConditionType:
-                generated_metastrings.append( ConditionMetastring().fromBlockType(single_block) )
-                clean_block = ConditionMetastring().cleanBlockType(single_block)
+                clean_block = ConditionMetastring.cleanBlockType(single_block)
+                ms = ConditionMetastring(single_block.keyword, single_block.expression, single_block.end_keyword, single_block.else_keyword)
 
                 if single_block.content != []:
                     clean_block.content, content_metastring_children = self._processBlockList(single_block.content, predicate_list + [[clean_block.expression, 1, clean_block.keyword]])
-                    generated_metastrings.append(content_metastring_children)
+                    ms.setIfBodyMetastring(content_metastring_children)
                 if single_block.else_body != []:
                     clean_block.else_body, else_body_metastring_children = self._processBlockList(single_block.else_body, predicate_list + [[clean_block.expression, 0, clean_block.keyword]])
-                    generated_metastrings.append(else_body_metastring_children)
+                    ms.setElseBodyMetastring(else_body_metastring_children)
+
+                generated_metastrings.append( ms )
 
                 if predicate_list != []:
                     # TODO(jchaloup): register the AP in the conditioner table as well
@@ -157,16 +160,18 @@ class SpecModel(object):
                 continue
 
             if single_block.block_type == BlockTypes.MacroConditionType:
-                generated_metastrings.append( MacroConditionMetastring().fromBlockType(single_block) )
-                clean_block = MacroConditionMetastring().cleanBlockType(single_block)
+                metastring = MacroConditionMetastring(single_block.condition, single_block.name, single_block.ending)
+                clean_block = MacroConditionMetastring.cleanBlockType(single_block)
 
                 if single_block.content != []:
                     if '!' in single_block.condition:
                         clean_block.content, metastring_children = self._processBlockList(single_block.content, predicate_list + [[clean_block.name, 0, None]])
+                        metastring.setContentMetastring(metastring_children)
                     else:
                         clean_block.content, metastring_children = self._processBlockList(single_block.content, predicate_list + [[clean_block.name, 1, None]])
+                        metastring.setContentMetastring(metastring_children)
 
-                    generated_metastrings.append(metastring_children)
+                generated_metastrings.append( metastring )
 
                 if predicate_list != []:
                     # TODO(jchaloup): register the AP in the conditioner table as well
@@ -184,108 +189,91 @@ class SpecModel(object):
         for i, block in enumerate(block_list):
             if block.block_type == BlockTypes.MacroDefinitionType:
                 metastrings[ms_idx].setBlockIdx(ModelTypes.Macros, len(self._metadata_macros))
-                #print repr(metastrings[ms_idx].to_str()), block, len(self._metadata_macros)
                 self._metadata_macros.append(block)
-                ms_idx = ms_idx + 1
+                ms_idx += 1
                 continue
 
             if block.block_type == BlockTypes.MacroConditionType:
                 # TODO(jchaloup): Should it be under the macros or under its own category?
                 metastrings[ms_idx].setBlockIdx(ModelTypes.Macros, len(self._metadata_macros))
-                #print repr(metastrings[ms_idx].to_str()), metastrings[ms_idx], block, len(self._metadata_macros)
                 self._metadata_macros.append(block)
-                ms_idx = ms_idx + 1
                 if block.content != []:
-                    self._toAbstractModel(metastrings[ms_idx], block.content)
-                    ms_idx = ms_idx + 1
+                    self._toAbstractModel(metastrings[ms_idx].getContentMetastring(), block.content)
+                ms_idx += 1
                 continue
 
             if block.block_type == BlockTypes.CommentType:
                 metastrings[ms_idx].setBlockIdx(ModelTypes.Comment, len(self._comments_table))
-                #print repr(metastrings[ms_idx].to_str()), block, len(self._comments_table)
                 self._comments_table.append(block)
-                ms_idx = ms_idx + 1
+                ms_idx += 1
                 continue
 
             if block.block_type == BlockTypes.HeaderTagType:
                 metastrings[ms_idx].setBlockIdx(ModelTypes.Tag, len(self._metadata_tags))
-                #print repr(metastrings[ms_idx].to_str()), block, len(self._metadata_tags)
                 self._metadata_tags.append(block)
-                ms_idx = ms_idx + 1
+                ms_idx += 1
                 continue
 
             if block.block_type == BlockTypes.ConditionType:
                 metastrings[ms_idx].setBlockIdx(ModelTypes.Condition, len(self._conditioner_table))
-                #print repr(metastrings[ms_idx].to_str()), block, len(self._conditioner_table)
                 self._conditioner_table.append(block.expression)
-                ms_idx = ms_idx + 1
                 # TODO(jchaloup): distribute the APs properly
                 if block.content != []:
-                    self._toAbstractModel(metastrings[ms_idx], block.content)
-                    ms_idx = ms_idx + 1
+                    self._toAbstractModel(metastrings[ms_idx].getIfBodyMetastring(), block.content)
                 if block.else_body != []:
-                    self._toAbstractModel(metastrings[ms_idx], block.else_body)
-                    ms_idx = ms_idx + 1
+                    self._toAbstractModel(metastrings[ms_idx].getElseBodyMetastring(), block.else_body)
+                ms_idx += 1
+                continue
+
+            if block.block_type == BlockTypes.PackageTagType:
+                metastrings[ms_idx].setBlockIdx(ModelTypes.Package, len(self._packages))
+                self._packages.append(block)
+                if block.content != []:
+                    self._toAbstractModel(metastrings[ms_idx].getContentMetastring(), block.content)
+                ms_idx += 1
+                continue
+
+            if block.block_type == BlockTypes.ChangelogTagType:
+                metastrings[ms_idx].setBlockIdx(ModelTypes.Changelog)
+                self._changelog = block
+                ms_idx += 1
                 continue
 
             if block.block_type == BlockTypes.SectionTagType:
                 if block.keyword == "description":
                     metastrings[ms_idx].setBlockIdx(ModelTypes.Description, len(self._descriptions))
-                    #print repr(metastrings[ms_idx].to_str()), block, len(self._descriptions)
                     self._descriptions.append(block)
-                    ms_idx = ms_idx + 1
-                    continue
-                if block.keyword == "package":
-                    metastrings[ms_idx].setBlockIdx(ModelTypes.Package, len(self._packages))
-                    #print repr(metastrings[ms_idx].to_str()), block, len(self._packages)
-                    self._packages.append(block)
-                    ms_idx = ms_idx + 1
-                    if block.content != []:
-                        self._toAbstractModel(metastrings[ms_idx], block.content)
-                        ms_idx = ms_idx + 1
+                    ms_idx += 1
                     continue
                 if block.keyword == "files":
                     metastrings[ms_idx].setBlockIdx(ModelTypes.Files, len(self._files))
-                    #print repr(metastrings[ms_idx].to_str()), block, len(self._files)
                     self._files.append(block)
-                    ms_idx = ms_idx + 1
+                    ms_idx += 1
                     continue
                 if block.keyword == "prep":
                     metastrings[ms_idx].setBlockIdx(ModelTypes.Prep)
-                    #print repr(metastrings[ms_idx].to_str()), block, 0
                     self._prep = block
-                    ms_idx = ms_idx + 1
+                    ms_idx += 1
                     continue
                 if block.keyword == "build":
                     metastrings[ms_idx].setBlockIdx(ModelTypes.Build)
-                    #print repr(metastrings[ms_idx].to_str()), block, 0
                     self._build = block
-                    ms_idx = ms_idx + 1
+                    ms_idx += 1
                     continue
                 if block.keyword == "install":
                     metastrings[ms_idx].setBlockIdx(ModelTypes.Install)
-                    #print repr(metastrings[ms_idx].to_str()), block, 0
                     self._install = block
-                    ms_idx = ms_idx + 1
+                    ms_idx += 1
                     continue
                 if block.keyword == "check":
                     metastrings[ms_idx].setBlockIdx(ModelTypes.Check)
-                    #print repr(metastrings[ms_idx].to_str()), block, 0
                     self._check = block
-                    ms_idx = ms_idx + 1
-                    continue
-                if block.keyword == "changelog":
-                    metastrings[ms_idx].setBlockIdx(ModelTypes.Changelog)
-                    #print repr(metastrings[ms_idx].to_str()), block, 0
-                    self._changelog = block
-                    ms_idx = ms_idx + 1
+                    ms_idx += 1
                     continue
 
-                #print block.keyword
                 metastrings[ms_idx].setBlockIdx(ModelTypes.OtherSection, len(self._other_sections))
-                #print repr(metastrings[ms_idx].to_str()), block, len(self._other_sections)
                 self._other_sections.append(block)
-                ms_idx = ms_idx + 1
+                ms_idx += 1
                 continue
 
             raise BlockTypeUnknown("Block type {} unknown".format(block.block_type))
@@ -308,7 +296,7 @@ class SpecModel(object):
             if isinstance(item, list):
                 data.append(self._metastring_list_to_json(item))
                 continue
-            data.append(item.to_str())
+            data.append(item.to_json())
         return data
 
     def metastrings_to_json(self):
@@ -322,3 +310,19 @@ class SpecModel(object):
             "block_list": map(lambda l: l.to_json(), self._block_list),
             "metastring": self.metastrings_to_str(),
         }
+
+    def _generate_spec(self, metastrings):
+        for metastring in metastrings:
+            if metastring.modelType() == ModelTypes.Condition:
+                expression = self._conditioner_table[metastring.blockIdx()]
+                print metastring
+                print metastring.blockIdx()
+
+                #self._generate_spec
+
+                print metastring.hasElseBody()
+
+            exit(1)
+
+    def to_spec(self):
+        self._generate_spec(self._metastrings)

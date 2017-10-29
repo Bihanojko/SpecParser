@@ -11,6 +11,7 @@ class BlockTypes(object):
     CommentType = 5
     ConditionType = 6
     ChangelogTagType = 7
+    PackageTagType = 8
 
 class BlockTypeMismatchException(Exception):
     pass
@@ -26,7 +27,8 @@ keys_list = [
     ['keyword', 'name'],
     ['content'],
     ['keyword', 'expression', 'content', 'else_keyword', 'else_body', 'end_keyword'],
-    ['author', 'date', 'mark', 'comment']
+    ['author', 'date', 'mark', 'comment'],
+    ['keyword', 'name', 'parameters', 'subname', 'content'],
 ]
 
 class RawSpecFile(object):
