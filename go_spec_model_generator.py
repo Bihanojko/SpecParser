@@ -27,7 +27,7 @@ class GoSpecModelGenerator(object):
 
     @classmethod
     def reduce_gospecmodel(cls):
-        """TODO"""
+        """Reduce GoSpecModel, e. g. delete unused fields."""
         reduced_gospecmodel = deepcopy(cls.gospecmodel)
 
         for (block_list, reduced_block_list) in zip(sorted(cls.gospecmodel.__dict__.iteritems()), sorted(reduced_gospecmodel.__dict__.iteritems())):
@@ -88,7 +88,7 @@ class GoSpecModelGenerator(object):
 
     @staticmethod
     def append_dependency(current_unit, keyword, header_tag):
-        """TODO"""
+        """Append appropriate record from ExcludeArch, Requires or BuildRequires."""
         if current_unit == []:
             if keyword == 'excludearch':
                 current_unit = {keyword:[header_tag['content']]}
@@ -118,7 +118,8 @@ class GoSpecModelGenerator(object):
 
     @classmethod
     def gospecmodel_to_print(cls, single_record):
-        """TODO"""
+        """Reduce GoSpecModel for printing - remove unnecessary information
+        and transform all fields to a simpler representation."""
         predicate_list = []
 
         if 'AP' in single_record and single_record['AP'] != '':
@@ -211,7 +212,8 @@ class GoSpecModelGenerator(object):
 
     @classmethod
     def process_unit_list(cls):
-        """TODO"""
+        """Transform a flat unit_list into a list of lists, where every list contains information
+        about a single package."""
         used_unit_names = []
 
         for single_record in cls.gospecmodel.unit_list:
@@ -259,9 +261,7 @@ class GoSpecModelGenerator(object):
 
     @classmethod
     def create_go_spec_model(cls, Specfile2_json_representation):
-        """TODO"""
-        global Specfile2
-
+        """Transform specmodel into gospec model."""
         Specfile2 = json.loads(Specfile2_json_representation)
         cls.gospecmodel.metastring = Specfile2['metastring']
 
@@ -317,7 +317,7 @@ class GoSpecModelGenerator(object):
 
                 elif ('name' in single_section and single_section['name'] is not None) \
                 or ('subname' in single_section and single_section['subname'] is not None
-                and 'parameters' in single_section and 'n' in single_section['parameters']): # TODO subname?
+                and 'parameters' in single_section and 'n' in single_section['parameters']):
                     cls.gospecmodel.unit_list.append(single_section)
 
                     to_be_replaced_list = re.findall(r'#' + str('1' + str(index)) + '%', cls.gospecmodel.metastring)
@@ -368,7 +368,7 @@ class GoSpecModelGenerator(object):
 
     @classmethod
     def process_single_record(cls, metarecord, attribute, index, pos_in_unit):
-        """TODO"""
+        """Transform single record of GoSpecModel to its equivalent SpecModel representation."""
         if not isinstance(metarecord, list):
             if metarecord['block_type'] == 0:
                 if attribute == 'metadata':
@@ -535,7 +535,7 @@ class GoSpecModelGenerator(object):
 
     @classmethod
     def transform_gospec_to_specmodel(cls, go_specfile):
-        """Transform gospec back to specmodel."""
+        """Transform GoSpecModel back to SpecModel."""
         cls.gospecmodel = json.loads(go_specfile)
 
         cls.init_PredicateList()
