@@ -3,60 +3,13 @@ import json, io
 from copy import deepcopy
 
 from abstract_model import SpecfileClass, BlockTypes, keys_list
-from abstract_model import prettyprint_headervalue_position, prettyprint_macroname_position
+from abstract_model import prettyprint_headervalue_position, prettyprint_macroname_position, BlockTypeUnknown
 from specparser import RawSpecFileParser
 from metastring import Metastring
-
-
+from specmodel import SpecModelGenerator
 
 Specfile = SpecfileClass()
 metastring_list = []
-
-
-
-def json_to_specfile_class(json_containing_parsed_spec, predicate_list):
-
-    if json_containing_parsed_spec is None:
-        return
-
-    for single_block in json_containing_parsed_spec:
-        if predicate_list != []:
-            single_block['AP'] = predicate_list
-
-        Specfile.metastring += '#' + Metastring.create_metastring(single_block, single_block['block_type'])
-
-        # Section Tag, package section
-        if single_block['block_type'] == BlockTypes.SectionTagType and 'package' in single_block['keyword']:
-            Specfile.metastring += '%4'
-            if single_block['content'] != []:
-                count = len(Specfile.block_list)
-                json_to_specfile_class(single_block['content'], predicate_list)
-                Specfile.block_list = Specfile.block_list[:count]
-            Specfile.block_list.append(single_block)
-
-        # Condition
-        elif single_block['block_type'] == BlockTypes.ConditionType:
-            Specfile.block_list.append(single_block)
-            count = len(Specfile.block_list)
-            if 'content' in single_block and single_block['content'] != []:
-                json_to_specfile_class(single_block['content'], predicate_list + [[single_block['expression'], 1, single_block['keyword']]])
-            if 'else_body' in single_block and single_block['else_body'] != []:
-                json_to_specfile_class(single_block['else_body'], predicate_list + [[single_block['expression'], 0, single_block['keyword']]])
-            Specfile.block_list = Specfile.block_list[:count]
-
-        # MacroCondition
-        elif single_block['block_type'] == BlockTypes.MacroConditionType:
-            Specfile.block_list.append(single_block)
-            count = len(Specfile.block_list)
-            if 'content' in single_block and single_block['content'] != []:
-                if 'condition' in single_block and '!' in single_block['condition']:
-                    json_to_specfile_class(single_block['content'], predicate_list + [[single_block['name'], 0, None]])
-                else:
-                    json_to_specfile_class(single_block['content'], predicate_list + [[single_block['name'], 1, None]])
-            Specfile.block_list = Specfile.block_list[:count]
-
-        else:
-            Specfile.block_list.append(single_block)
 
 def open_file(input_filepath):
 
@@ -78,19 +31,18 @@ def create_abstract_model(input_filepath):
     try:
         json_containing_parsed_spec = json.loads(inputfile_content)
     except ValueError, e:
-        parser = RawSpecFileParser(inputfile_content)
-        json_containing_parsed_spec = parser.parse().json()
+        parser = RawSpecFileParser(inputfile_content).parse()
+        json_containing_parsed_spec = parser.json()
+        raw = parser.raw()
 
     if 'metastring' in json_containing_parsed_spec and json_containing_parsed_spec['metastring'] != '':
         Specfile.block_list = json_containing_parsed_spec['block_list']
         Specfile.metastring = json_containing_parsed_spec['metastring']
     else:
-        Specfile.metastring += json_containing_parsed_spec['beginning']
-        Specfile.metastring += json_containing_parsed_spec['metastring']
-        json_to_specfile_class(json_containing_parsed_spec['block_list'], [])
-        Specfile.metastring += json_containing_parsed_spec['end']
-
-
+        spec_model = SpecModelGenerator().fromRawSpecfile(raw)
+        data = spec_model.model_to_json()
+        Specfile.metastring = data["metastring"]
+        Specfile.block_list = json.loads(json.dumps(data["block_list"], sort_keys=True))
 
 def print_indentation(indentation):
 
