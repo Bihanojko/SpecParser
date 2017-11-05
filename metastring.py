@@ -1,7 +1,27 @@
 import re
 
 from abstract_model import keys_list, BlockTypes, BlockTypeMismatchException
-from specparser import HeaderTagBlock, ChangelogBlock, SectionBlock, ConditionBlock, MacroConditionBlock, MacroDefinitionBlock, CommentBlock, PackageBlock
+from specparser import HeaderTagBlock, ChangelogBlock, SectionBlock, ConditionBlock, MacroConditionBlock, MacroDefinitionBlock, CommentBlock, PackageBlock, WhitespacesBlock, UninterpretedBlock
+
+# Remove once the spec model generator is moved to a different module
+class ModelTypes:
+    Tag = 0
+    Macros = 1
+    Package = 2
+    Description = 3
+    Files = 4
+    OtherSection = 5
+    Comment = 6
+    Condition = 7
+    Prep = 8
+    Build = 9
+    Install = 10
+    Check = 11
+    Changelog = 12
+    Uninterpreted = 13
+
+class ModelTypeUnknown(Exception):
+    pass
 
 class KeyMetastring(object):
     def __init__(self):
@@ -122,16 +142,23 @@ class HeaderTagMetastring(BaseMetastring):
             return "{}({}):{}".format(self._key.format(tag.key), self._option.format(tag.option), self._content.format(tag.content))
 
 class SectionMetastring(BaseMetastring):
-    def __init__(self, keyword, parameters, name, subname, content):
+    def __init__(self, keyword, parameters, name, subname):
         BaseMetastring.__init__(self)
         self._type = BlockTypes.SectionTagType
         self._keyword = KeyMetastring().fromBlock(keyword, 0)
-        self._content = KeyMetastring().fromBlock(content, 4)
+        self._content = []
         self._parameters = KeyMetastring().fromBlock(parameters, 2)
         self._subname = KeyMetastring().fromBlock(subname, 3)
         self._name = KeyMetastring().fromBlock(name, 1)
+        self._section_keyword = keyword.strip()
 
         self._order = ["keyword", "name", "parameters", "subname", "content"]
+
+    def setContentMetastring(self, metastring):
+        self._content = metastring
+
+    def getContentMetastring(self):
+        return self._content
 
     @staticmethod
     def cleanBlockType(block):
@@ -142,6 +169,51 @@ class SectionMetastring(BaseMetastring):
             KeyMetastring.cleanBlock(block.subname),
             KeyMetastring.cleanBlock(block.content)
         )
+
+    def format(self, specmodel):
+        if self._model_type == ModelTypes.Description:
+            section = specmodel.getDescription(self._block_idx)
+            body = []
+            for item in self._content:
+                body.append(item.format(specmodel))
+
+            params = []
+            if section.parameters != []:
+                for param in section.parameters:
+                    params.append("-{}{}".format(param["key"], param["value"]))
+
+            return "{}{}{}{}{}".format(self._keyword.format(section.keyword), self._name.format(section.name), self._parameters.format(" ".join(params)), self._subname.format(section.subname), "".join(body))
+
+        if self._model_type in [ModelTypes.Prep, ModelTypes.Build, ModelTypes.Install, ModelTypes.Check, ModelTypes.OtherSection]:
+            if self._model_type == ModelTypes.Prep:
+                section = specmodel.getPrep()
+            if self._model_type == ModelTypes.Build:
+                section = specmodel.getBuild()
+            if self._model_type == ModelTypes.Install:
+                section = specmodel.getBuild()
+            if self._model_type == ModelTypes.Check:
+                section = specmodel.getCheck()
+            if self._model_type == ModelTypes.OtherSection:
+                section = specmodel.getSection(self._block_idx)
+
+            body = []
+            for item in self._content:
+                body.append(item.format(specmodel))
+            return "{}{}".format(self._keyword.format(section.keyword), "".join(body))
+
+        if self._model_type == ModelTypes.Files:
+            section = specmodel.getFiles(self._block_idx)
+            body = []
+            for item in self._content:
+                body.append(item.format(specmodel))
+            params = []
+            if section.parameters != []:
+                for param in section.parameters:
+                    params.append("-{}{}".format(param["key"], param["value"]))
+
+            return "{}{}{}\n{}".format(self._keyword.format(section.keyword), self._subname.format(section.subname), self._parameters.format("".join(params)), "".join(body))
+
+        raise ModelTypeUnknown("Unknown model type {}".format(self._model_type))
 
 class PackageMetastring(BaseMetastring):
     def __init__(self, keyword, parameters, subname):
@@ -173,10 +245,9 @@ class PackageMetastring(BaseMetastring):
         package = specmodel.getPackage(self._block_idx)
         body = []
         for item in self._content:
-            print item
+            body.append(item.format(specmodel))
 
-        exit(1)
-        #return "{}{}{}{}{}{}".format(self._keyword.format("%if"), self._expression.format(condition), "".join(if_body), self._else_keyword.format("%else"), "".join(else_body), self._end_keyword.format("%endif"))
+        return "{}{}{}{}".format(self._keyword.format(package.keyword), self._parameters.format(package.parameters), self._subname.format(package.subname), "".join(body))
 
 class ConditionMetastring(BaseMetastring):
     def __init__(self, keyword, expression, end_keyword, else_keyword = None):
@@ -304,6 +375,41 @@ class CommentMetastring(BaseMetastring):
         comment = specmodel.getComment(self._block_idx)
         return self._content.format(comment.content)
 
+class WhitespacesMetastring(BaseMetastring):
+    def __init__(self, content):
+        BaseMetastring.__init__(self)
+        self._type = BlockTypes.Whitespaces
+        self._content = KeyMetastring().fromBlock(content, 0)
+
+        self._order = ["content"]
+
+    @staticmethod
+    def cleanBlockType(block):
+        return WhitespacesBlock(
+            KeyMetastring.cleanBlock(block.content),
+        )
+
+    def format(self, specmodel):
+        return self._content.format("")
+
+class UninterpretedMetastring(BaseMetastring):
+    def __init__(self, content):
+        BaseMetastring.__init__(self)
+        self._type = BlockTypes.Uninterpreted
+        self._content = KeyMetastring().fromBlock(content, 0)
+
+        self._order = ["content"]
+
+    @staticmethod
+    def cleanBlockType(block):
+        return UninterpretedBlock(
+            KeyMetastring.cleanBlock(block.content),
+        )
+
+    def format(self, specmodel):
+        item = specmodel.getUninterpreted(self._block_idx)
+        return self._content.format(item.content)
+
 class ChangelogMetastring(BaseMetastring):
     def __init__(self, keyword, content):
         BaseMetastring.__init__(self)
@@ -326,13 +432,24 @@ class ChangelogMetastring(BaseMetastring):
             KeyMetastring.cleanBlock(content)
         )
 
+    def format(self, specmodel):
+        section = specmodel.getChangelog()
+        body = []
+        for i, item in enumerate(section.content):
+            body.append(self._content[i].format(item))
+
+        return "{}{}".format(self._keyword.format(section.keyword), "".join(body))
+
 class MMetastring(object):
     def __init__(self, metastrings):
         self._metastrings = metastrings
 
     def format(self, spec_model):
+        body = []
         for metastring in self._metastrings:
-            print repr(metastring.format(spec_model))
+            body.append(metastring.format(spec_model))
+        return "".join(body)
+
 
 class Metastring(object):
     """Class containing metastring creation and manipulation operations."""

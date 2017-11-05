@@ -34,8 +34,7 @@ def create_abstract_model(input_filepath):
         parser = RawSpecFileParser(inputfile_content).parse()
         json_containing_parsed_spec = parser.json()
         raw = parser.raw()
-        print(json.dumps(parser.json()))
-        exit(1)
+        #print(json.dumps(parser.json()))
 
     if 'metastring' in json_containing_parsed_spec and json_containing_parsed_spec['metastring'] != '':
         Specfile.block_list = json_containing_parsed_spec['block_list']

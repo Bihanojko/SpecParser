@@ -1,5 +1,5 @@
 from abstract_model import BlockTypes, BlockTypeUnknown
-from metastring import HeaderTagMetastring, SectionMetastring, ConditionMetastring, MacroConditionMetastring, MacroDefinitionMetastring, CommentMetastring, ChangelogMetastring, PackageMetastring, MMetastring
+from metastring import HeaderTagMetastring, SectionMetastring, ConditionMetastring, MacroConditionMetastring, MacroDefinitionMetastring, CommentMetastring, ChangelogMetastring, PackageMetastring, MMetastring, WhitespacesMetastring, UninterpretedMetastring
 
 # Condition-free layout of a specfile 2.0
 #
@@ -39,13 +39,12 @@ class ModelTypes:
     Install = 10
     Check = 11
     Changelog = 12
+    Uninterpreted = 13
 
 class SpecModel(object):
 
     def __init__(self):
-        self._beginning = ""
         self._metastrings = []
-        self._end = ""
 
         self._metadata_tags = []
         self._metadata_macros = []
@@ -60,6 +59,7 @@ class SpecModel(object):
         self._other_sections = []
         self._conditions = []
         self._comments = []
+        self._uninterpreted = []
 
     def addTag(self, data):
         idx = len(self._metadata_tags)
@@ -155,26 +155,26 @@ class SpecModel(object):
     def getComment(self, idx):
         return self._comments[idx]
 
+    def addUninterpreted(self, data):
+        idx = len(self._uninterpreted)
+        self._uninterpreted.append(data)
+        return idx
+
+    def getUninterpreted(self, idx):
+        return self._uninterpreted[idx]
+
 class SpecModelGenerator(object):
     def __init__(self):
         # metastring extraction from a raw specfile
         self._block_list = []
-        self._beginning = ""
         self._metastrings = []
-        self._end = ""
         # abstract specfile modeling
         self._spec_model = SpecModel()
 
     def fromRawSpecfile(self, raw):
-        self._beginning = raw.beginning
-        self._end = raw.end
-        self._block_list, self._metastrings = self._processBlockList(raw.block_list)
+        self._block_list, self._metastrings = self._processBlockList(raw)
         self._toAbstractModel(self._metastrings, self._block_list)
-        #print (self.metastrings_to_json())
-        MMetastring(self._metastrings).format(self._spec_model)
-        #self.to_spec()
-        exit(1)
-
+        #MMetastring(self._metastrings).format(self._spec_model)
         return self
 
     def _processBlockList(self, block_list, predicate_list = []):
@@ -201,6 +201,19 @@ class SpecModelGenerator(object):
                 processed_blocks.append(clean_block)
                 continue
 
+            if single_block.block_type == BlockTypes.Whitespaces:
+                generated_metastrings.append( WhitespacesMetastring(single_block.content) )
+                clean_block = WhitespacesMetastring.cleanBlockType(single_block)
+                processed_blocks.append(clean_block)
+                continue
+
+            if single_block.block_type == BlockTypes.Uninterpreted:
+                generated_metastrings.append( UninterpretedMetastring(single_block.content) )
+                clean_block = UninterpretedMetastring.cleanBlockType(single_block)
+                processed_blocks.append(clean_block)
+                continue
+
+
             if single_block.block_type == BlockTypes.MacroDefinitionType:
                 metastring = MacroDefinitionMetastring(single_block.keyword, single_block.name, single_block.options, single_block.body)
                 generated_metastrings.append( metastring )
@@ -214,11 +227,11 @@ class SpecModelGenerator(object):
             if single_block.block_type == BlockTypes.PackageTagType:
                 clean_block = PackageMetastring.cleanBlockType(single_block)
                 metastring = PackageMetastring(single_block.keyword, single_block.parameters, single_block.subname)
-                print(single_block.content)
+                #print(single_block.content)
                 if single_block.content != []:
                     clean_block.content, metastring_children = self._processBlockList(single_block.content, predicate_list)
-                    print(clean_block.content)
-                    exit(1)
+                    #print(clean_block.content)
+                    #exit(1)
                     metastring.setContentMetastring(metastring_children)
 
                 generated_metastrings.append( metastring )
@@ -239,8 +252,15 @@ class SpecModelGenerator(object):
                 continue
 
             if single_block.block_type == BlockTypes.SectionTagType:
-                generated_metastrings.append( SectionMetastring(single_block.keyword, single_block.parameters, single_block.name, single_block.subname, single_block.content) )
                 clean_block = SectionMetastring.cleanBlockType(single_block)
+                metastring = SectionMetastring(single_block.keyword, single_block.parameters, single_block.name, single_block.subname)
+
+                if single_block.content != []:
+                    clean_block.content, metastring_children = self._processBlockList(single_block.content, predicate_list)
+                    metastring.setContentMetastring(metastring_children)
+
+                generated_metastrings.append( metastring )
+
                 if predicate_list != []:
                     # TODO(jchaloup): register the AP in the conditioner table as well
                     clean_block.AP = predicate_list
@@ -312,6 +332,15 @@ class SpecModelGenerator(object):
                 ms_idx += 1
                 continue
 
+            if block.block_type == BlockTypes.Uninterpreted:
+                metastrings[ms_idx].setBlockIdx(ModelTypes.Uninterpreted, self._spec_model.addUninterpreted(block))
+                ms_idx += 1
+                continue
+
+            if block.block_type == BlockTypes.Whitespaces:
+                ms_idx += 1
+                continue
+
             if block.block_type == BlockTypes.HeaderTagType:
                 idx = self._spec_model.addTag(block)
                 metastrings[ms_idx].setBlockIdx(ModelTypes.Tag, idx)
@@ -343,36 +372,50 @@ class SpecModelGenerator(object):
                 continue
 
             if block.block_type == BlockTypes.SectionTagType:
-                if block.keyword == "description":
+                if block.keyword == "%description":
                     metastrings[ms_idx].setBlockIdx(ModelTypes.Description, self._spec_model.addDescription(block))
+                    if block.content != []:
+                        self._toAbstractModel(metastrings[ms_idx].getContentMetastring(), block.content)
                     ms_idx += 1
                     continue
-                if block.keyword == "files":
+                if block.keyword == "%files":
                     metastrings[ms_idx].setBlockIdx(ModelTypes.Files, self._spec_model.addFiles(block))
+                    if block.content != []:
+                        self._toAbstractModel(metastrings[ms_idx].getContentMetastring(), block.content)
                     ms_idx += 1
                     continue
-                if block.keyword == "prep":
+                if block.keyword == "%prep":
                     metastrings[ms_idx].setBlockIdx(ModelTypes.Prep)
                     self._spec_model.setPrep(block)
+                    if block.content != []:
+                        self._toAbstractModel(metastrings[ms_idx].getContentMetastring(), block.content)
                     ms_idx += 1
                     continue
-                if block.keyword == "build":
+                if block.keyword == "%build":
                     metastrings[ms_idx].setBlockIdx(ModelTypes.Build)
                     self._spec_model.setBuild(block)
+                    if block.content != []:
+                        self._toAbstractModel(metastrings[ms_idx].getContentMetastring(), block.content)
                     ms_idx += 1
                     continue
-                if block.keyword == "install":
+                if block.keyword == "%install":
                     metastrings[ms_idx].setBlockIdx(ModelTypes.Install)
                     self._spec_model.setInstall(block)
+                    if block.content != []:
+                        self._toAbstractModel(metastrings[ms_idx].getContentMetastring(), block.content)
                     ms_idx += 1
                     continue
-                if block.keyword == "check":
+                if block.keyword == "%check":
                     metastrings[ms_idx].setBlockIdx(ModelTypes.Check)
                     self._spec_model.setCheck(block)
+                    if block.content != []:
+                        self._toAbstractModel(metastrings[ms_idx].getContentMetastring(), block.content)
                     ms_idx += 1
                     continue
 
                 metastrings[ms_idx].setBlockIdx(ModelTypes.OtherSection, self._spec_model.addSection(block))
+                if block.content != []:
+                    self._toAbstractModel(metastrings[ms_idx].getContentMetastring(), block.content)
                 ms_idx += 1
                 continue
 
@@ -403,7 +446,7 @@ class SpecModelGenerator(object):
         return self._metastring_list_to_json(self._metastrings)
 
     def metastrings_to_str(self):
-        return self._beginning + self._metastring_list_to_str(self._metastrings) + self._end
+        return self._metastring_list_to_str(self._metastrings)
 
     def model_to_json(self):
         return {

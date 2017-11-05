@@ -2,6 +2,11 @@ from __future__ import print_function
 import json
 from abstract_model import RawSpecFile, BlockTypes, SectionContextException, SectionKeywordUnknown
 
+class RawBlockTypes:
+  Condition = 0
+  RawText = 1
+  RawSection = 2
+
 class Block(object):
 
     def _filter(self, data):
@@ -159,19 +164,6 @@ class WhitespacesBlock(Block):
           "content": self.content,
         })
 
-class UninterpretedBlock(Block):
-    def __init__(self, content):
-        self.block_type = BlockTypes.Uninterpreted
-        self.content = content
-        self.AP = None
-
-    def to_json(self):
-        return self._filter({
-          "AP": self.AP,
-          "block_type": self.block_type,
-          "content": self.content,
-        })
-
 class ConditionBlock(Block):
     def __init__(self, keyword, expression, content, else_body, end_keyword, else_keyword):
         self.block_type = BlockTypes.ConditionType
@@ -196,9 +188,22 @@ class ConditionBlock(Block):
           "end_keyword": self.end_keyword,
         })
 
+class UninterpretedBlock(Block):
+    def __init__(self, content):
+        self.block_type = BlockTypes.Uninterpreted
+        self.content = content
+        self.AP = None
+
+    def to_json(self):
+        return self._filter({
+          "AP": self.AP,
+          "block_type": self.block_type,
+          "content": self.content,
+        })
+
 class RawConditionBlock(Block):
     def __init__(self, keyword, expression, content, else_body, end_keyword, else_keyword):
-        self.block_type = BlockTypes.ConditionType
+        self.block_type = RawBlockTypes.Condition
         self.keyword = keyword
         self.expression = expression
         self.content = content
@@ -236,7 +241,7 @@ class RawContext(Block):
 
 class RawText(Block):
   def __init__(self, text):
-    self.block_type = BlockTypes.RawText
+    self.block_type = RawBlockTypes.RawText
     self.text = text
 
   def to_json(self):
@@ -247,7 +252,7 @@ class RawText(Block):
 
 class RawSection(Block):
   def __init__(self, kw, section):
-    self.block_type = BlockTypes.RawSection
+    self.block_type = RawBlockTypes.RawSection
     self.section = section
     self.kw = kw
 
@@ -352,7 +357,7 @@ class SpecfileParser(runtime.Parser):
         _context = self.Context(_parent, self._scanner, 'cond_spec', [])
         if_body = []
         else_body = []
-        else_kw = ""
+        else_kw = None
         CONDITION_BEG_KEYWORD = self._scan('CONDITION_BEG_KEYWORD', context=_context)
         CONDITION_EXPRESSION = self._scan('CONDITION_EXPRESSION', context=_context)
         cond_body = self.cond_body(_context)
@@ -377,7 +382,7 @@ class SpecfileParser(runtime.Parser):
                 SECTION_CONTENT = self._scan('SECTION_CONTENT', context=_context)
                 items.append(RawSection(SECTION_KW.strip(), "{}{}".format(SECTION_KW,SECTION_CONTENT)))
         END = self._scan('END', context=_context)
-        if len(items) > 0 and items[-1].block_type == BlockTypes.RawText: items[-1].text += END
+        if len(items) > 0 and items[-1].block_type == RawBlockTypes.RawText: items[-1].text += END
         else: items.append(RawText(END))
         self._rawSpecFile.block_list = items
 
@@ -450,15 +455,15 @@ class SpecfileParser(runtime.Parser):
         while self._peek('NEWLINE', 'DASH', context=_context) == 'DASH':
             DASH = self._scan('DASH', context=_context)
             PARAMETERS = self._scan('PARAMETERS', context=_context)
-            pvalue = None
+            pvalue = ""
             if self._peek('PARAMETER_VALUE', 'DASH', 'NEWLINE', context=_context) == 'PARAMETER_VALUE':
                 PARAMETER_VALUE = self._scan('PARAMETER_VALUE', context=_context)
                 pvalue = PARAMETER_VALUE
             parameters.append({"key": PARAMETERS, "value": pvalue})
         NEWLINE = self._scan('NEWLINE', context=_context)
         uninterpreted_section_content = self.uninterpreted_section_content(_context)
-        if 'NAME' in locals(): subname = NAME + NEWLINE
-        else: subname = NEWLINE
+        if 'NAME' in locals(): subname = NAME
+        else: subname = ""
         self._rawSpecFile.block_list.append(SectionBlock(SECTION_KEY_NOPARSE_WITH_OPTS, parameters, None, subname, [uninterpreted_section_content]))
 
     def uninterpreted_section(self, _parent=None):
@@ -470,7 +475,7 @@ class SpecfileParser(runtime.Parser):
         SECTION_KEY_NOPARSE_PURE = self._scan('SECTION_KEY_NOPARSE_PURE', context=_context)
         NEWLINE = self._scan('NEWLINE', context=_context)
         uninterpreted_section_content = self.uninterpreted_section_content(_context)
-        self._rawSpecFile.block_list.append(SectionBlock(SECTION_KEY_NOPARSE_PURE, None, None, None, [uninterpreted_section_content]))
+        self._rawSpecFile.block_list.append(SectionBlock(SECTION_KEY_NOPARSE_PURE + NEWLINE, None, None, None, [uninterpreted_section_content]))
 
     def package_section_content(self, _parent=None):
         _context = self.Context(_parent, self._scanner, 'package_section_content', [])
@@ -580,10 +585,10 @@ class RawSpecFileParser(object):
   def divide_sections(self, blocks, tab = 0):
     items = []
     for block in blocks:
-      if block.block_type == BlockTypes.RawText:
+      if block.block_type == RawBlockTypes.RawText:
         sections = parseByRule("sections_list", block.text)
         items += sections.block_list
-      elif block.block_type == BlockTypes.ConditionType:
+      elif block.block_type == RawBlockTypes.Condition:
         items.append(
           # keyword, expression, content, else_body, end_keyword, else_keyword
           RawConditionBlock(
@@ -629,19 +634,19 @@ class RawSpecFileParser(object):
     sections = []
 
     for item in blocks:
-      if item.block_type == BlockTypes.RawText:
+      if item.block_type == RawBlockTypes.RawText:
         if len(sections) == 0:
           sections.append(RawContext())
 
         sections[-1].blocks.append(item)
         continue
 
-      if item.block_type == BlockTypes.RawSection:
+      if item.block_type == RawBlockTypes.RawSection:
         sections.append(RawContext(type=RawContextType.Section))
         sections[-1].blocks.append(item)
         continue
 
-      if item.block_type != BlockTypes.ConditionType:
+      if item.block_type != RawBlockTypes.Condition:
         raise BlockTypeUnknown("Unrecognized block type {}".format(item.block_type))
 
       ifsections = self.mark_sections(item.content, tab + 1)
@@ -693,7 +698,7 @@ class RawSpecFileParser(object):
   def parse_section(self, rule, context, tab = 0):
     sections = [[]]
     for block in context.blocks:
-      if block.block_type == BlockTypes.ConditionType:
+      if block.block_type == RawBlockTypes.Condition:
         if_blocks = []
         for if_item in block.content:
           if_blocks += self.parse_section(rule, if_item, tab + 1)
@@ -714,11 +719,11 @@ class RawSpecFileParser(object):
         )
         continue
 
-      if block.block_type == BlockTypes.RawText:
+      if block.block_type == RawBlockTypes.RawText:
         data = parseByRule(rule, block.text)
         sections[-1] += data.block_list
         continue
-      if block.block_type == BlockTypes.RawSection:
+      if block.block_type == RawBlockTypes.RawSection:
         if block.kw in ["%description", "%pre", "%post", "%preun", "%postun", "%files"]:
           data = parseByRule("uninterpreted_section_with_opts", block.section)
           rule = "uninterpreted_section_body"

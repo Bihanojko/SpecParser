@@ -12,10 +12,8 @@ class BlockTypes(object):
     ConditionType = 6
     ChangelogTagType = 7
     PackageTagType = 8
-    RawText = 9
-    RawSection = 10
-    Whitespaces = 11
-    Uninterpreted = 12
+    Whitespaces = 9
+    Uninterpreted = 10
 
 class BlockTypeMismatchException(Exception):
     pass
