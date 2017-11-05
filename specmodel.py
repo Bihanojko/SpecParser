@@ -1,5 +1,5 @@
 from abstract_model import BlockTypes, BlockTypeUnknown
-from metastring import HeaderTagMetastring, SectionMetastring, ConditionMetastring, MacroConditionMetastring, MacroDefinitionMetastring, CommentMetastring, ChangelogMetastring, PackageMetastring
+from metastring import HeaderTagMetastring, SectionMetastring, ConditionMetastring, MacroConditionMetastring, MacroDefinitionMetastring, CommentMetastring, ChangelogMetastring, PackageMetastring, MMetastring
 
 # Condition-free layout of a specfile 2.0
 #
@@ -170,8 +170,10 @@ class SpecModelGenerator(object):
         self._end = raw.end
         self._block_list, self._metastrings = self._processBlockList(raw.block_list)
         self._toAbstractModel(self._metastrings, self._block_list)
+        #print (self.metastrings_to_json())
+        MMetastring(self._metastrings).format(self._spec_model)
         #self.to_spec()
-        #exit(1)
+        exit(1)
 
         return self
 
@@ -182,7 +184,7 @@ class SpecModelGenerator(object):
         for single_block in block_list:
 
             if single_block.block_type == BlockTypes.HeaderTagType:
-                generated_metastrings.append( HeaderTagMetastring(single_block.key, single_block.content, single_block.option) )
+                generated_metastrings.append( HeaderTagMetastring(single_block.key, single_block.option, single_block.content) )
                 clean_block = HeaderTagMetastring.cleanBlockType(single_block)
                 if predicate_list != []:
                     # TODO(jchaloup): register the AP in the conditioner table as well
@@ -212,9 +214,11 @@ class SpecModelGenerator(object):
             if single_block.block_type == BlockTypes.PackageTagType:
                 clean_block = PackageMetastring.cleanBlockType(single_block)
                 metastring = PackageMetastring(single_block.keyword, single_block.parameters, single_block.subname)
-
+                print(single_block.content)
                 if single_block.content != []:
                     clean_block.content, metastring_children = self._processBlockList(single_block.content, predicate_list)
+                    print(clean_block.content)
+                    exit(1)
                     metastring.setContentMetastring(metastring_children)
 
                 generated_metastrings.append( metastring )
@@ -311,6 +315,7 @@ class SpecModelGenerator(object):
             if block.block_type == BlockTypes.HeaderTagType:
                 idx = self._spec_model.addTag(block)
                 metastrings[ms_idx].setBlockIdx(ModelTypes.Tag, idx)
+                metastrings[ms_idx].format(self._spec_model)
                 ms_idx += 1
                 continue
 

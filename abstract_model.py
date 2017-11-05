@@ -12,11 +12,21 @@ class BlockTypes(object):
     ConditionType = 6
     ChangelogTagType = 7
     PackageTagType = 8
+    RawText = 9
+    RawSection = 10
+    Whitespaces = 11
+    Uninterpreted = 12
 
 class BlockTypeMismatchException(Exception):
     pass
 
 class BlockTypeUnknown(Exception):
+    pass
+
+class SectionContextException(Exception):
+    pass
+
+class SectionKeywordUnknown(Exception):
     pass
 
 keys_list = [

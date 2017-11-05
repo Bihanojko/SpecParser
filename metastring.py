@@ -8,14 +8,17 @@ class KeyMetastring(object):
         self._left_ws = ""
         self._right_ws = ""
         self._idx = -1
+        self._is_none = False
 
     def fromBlock(self, string, idx):
+        if string == None:
+            self._is_none = True
+            return self
+
         if not isinstance(string, basestring):
             return self
 
         self._idx = idx
-        if string == None:
-            return self
 
         if string.isspace():
             self._right_ws = string
@@ -41,6 +44,11 @@ class KeyMetastring(object):
             return ""
 
         return "{}%{}{}".format(self._left_ws, self._idx, self._right_ws)
+
+    def format(self, value):
+        if self._is_none:
+            return ""
+        return "{}{}{}".format(self._left_ws, value, self._right_ws)
 
 class BaseMetastring(object):
     def __init__(self):
@@ -85,6 +93,9 @@ class BaseMetastring(object):
             data[key] = self.__dict__["_{}".format(key)].to_str()
         return data
 
+    def format(self, spec_model):
+        return ""
+
 class HeaderTagMetastring(BaseMetastring):
     def __init__(self, key, option, content):
         BaseMetastring.__init__(self)
@@ -92,7 +103,6 @@ class HeaderTagMetastring(BaseMetastring):
         self._key = KeyMetastring().fromBlock(key, 0)
         self._option = KeyMetastring().fromBlock(option, 1)
         self._content = KeyMetastring().fromBlock(content, 2)
-        self._block_idx = None
 
         self._order = ["key", "option", "content"]
 
@@ -103,6 +113,13 @@ class HeaderTagMetastring(BaseMetastring):
             KeyMetastring.cleanBlock(block.content),
             KeyMetastring.cleanBlock(block.option)
         )
+
+    def format(self, specmodel):
+        tag = specmodel.getTag(self._block_idx)
+        if tag.option == None:
+            return "{}:{}".format(self._key.format(tag.key), self._content.format(tag.content))
+        else:
+            return "{}({}):{}".format(self._key.format(tag.key), self._option.format(tag.option), self._content.format(tag.content))
 
 class SectionMetastring(BaseMetastring):
     def __init__(self, keyword, parameters, name, subname, content):
@@ -152,8 +169,17 @@ class PackageMetastring(BaseMetastring):
             block.content
         )
 
+    def format(self, specmodel):
+        package = specmodel.getPackage(self._block_idx)
+        body = []
+        for item in self._content:
+            print item
+
+        exit(1)
+        #return "{}{}{}{}{}{}".format(self._keyword.format("%if"), self._expression.format(condition), "".join(if_body), self._else_keyword.format("%else"), "".join(else_body), self._end_keyword.format("%endif"))
+
 class ConditionMetastring(BaseMetastring):
-    def __init__(self, keyword, expression, end_keyword, else_keyword = ""):
+    def __init__(self, keyword, expression, end_keyword, else_keyword = None):
         BaseMetastring.__init__(self)
         self._type = BlockTypes.ConditionType
         self._keyword = KeyMetastring().fromBlock(keyword, 0)
@@ -188,13 +214,25 @@ class ConditionMetastring(BaseMetastring):
             KeyMetastring.cleanBlock(block.else_keyword)
         )
 
+    def format(self, specmodel):
+        condition = specmodel.getCondition(self._block_idx)
+        if_body = []
+        for item in self._content:
+            if_body.append(item.format(specmodel))
+
+        else_body = []
+        for item in self._else_body:
+            else_body.append(item.format(specmodel))
+
+        return "{}{}{}{}{}{}".format(self._keyword.format("%if"), self._expression.format(condition), "".join(if_body), self._else_keyword.format("%else"), "".join(else_body), self._end_keyword.format("%endif"))
+
 class MacroConditionMetastring(BaseMetastring):
     def __init__(self, condition, name, ending):
         BaseMetastring.__init__(self)
         self._type = BlockTypes.MacroConditionType
         self._condition = KeyMetastring().fromBlock(condition, 0)
         self._name = KeyMetastring().fromBlock(name, 1)
-        self._content = None
+        self._content = []
         self._ending = KeyMetastring().fromBlock(ending, 3)
 
         self._order = ["condition", "name", "content", "ending"]
@@ -213,6 +251,13 @@ class MacroConditionMetastring(BaseMetastring):
             KeyMetastring.cleanBlock(block.content),
             KeyMetastring.cleanBlock(block.ending)
         )
+
+    def format(self, specmodel):
+        macro = specmodel.getMacro(self._block_idx)
+        metastrings = []
+        for item in self._content:
+            metastrings.append(item.format(specmodel))
+        return "{{{}{}{}}}".format(self._condition.format(macro.condition), self._name.format(macro.name), "".join(metastrings), self._ending.format(macro.ending))
 
 class MacroDefinitionMetastring(BaseMetastring):
     def __init__(self, keyword, name, options, body):
@@ -234,6 +279,13 @@ class MacroDefinitionMetastring(BaseMetastring):
             KeyMetastring.cleanBlock(block.body)
         )
 
+    def format(self, specmodel):
+        macro = specmodel.getMacro(self._block_idx)
+        if macro.options == None:
+            return "{}{}{}".format(self._keyword.format(macro.keyword), self._name.format(macro.name), self._body.format(macro.body))
+        else:
+            return "{}{}({}){}".format(self._keyword.format(macro.keyword), self._name.format(macro.name), self._options.format(macro.options), self._body.format(macro.body))
+
 class CommentMetastring(BaseMetastring):
     def __init__(self, content):
         BaseMetastring.__init__(self)
@@ -247,6 +299,10 @@ class CommentMetastring(BaseMetastring):
         return CommentBlock(
             KeyMetastring.cleanBlock(block.content),
         )
+
+    def format(self, specmodel):
+        comment = specmodel.getComment(self._block_idx)
+        return self._content.format(comment.content)
 
 class ChangelogMetastring(BaseMetastring):
     def __init__(self, keyword, content):
@@ -269,6 +325,14 @@ class ChangelogMetastring(BaseMetastring):
             KeyMetastring.cleanBlock(block.keyword),
             KeyMetastring.cleanBlock(content)
         )
+
+class MMetastring(object):
+    def __init__(self, metastrings):
+        self._metastrings = metastrings
+
+    def format(self, spec_model):
+        for metastring in self._metastrings:
+            print repr(metastring.format(spec_model))
 
 class Metastring(object):
     """Class containing metastring creation and manipulation operations."""
