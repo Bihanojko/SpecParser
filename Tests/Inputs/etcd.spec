@@ -102,8 +102,13 @@ Requires(postun): systemd
 A highly-available key value store for shared configuration.
 
 %if 0%{?with_devel}
+Do not forget about the devel subpackage
+%endif
+
+%if 0%{?with_devel}
 %package devel
 Summary:        etcd golang devel libraries
+# Comment
 BuildArch:      noarch
 
 %if 0%{?with_check}

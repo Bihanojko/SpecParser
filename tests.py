@@ -66,6 +66,7 @@ def run_tests():
             else:
                 sys.stdout.write(intro + "\033[1;31m" + "FAIL!" + "\033[0;0m" + " (" + specfile_filename + ")\n")
                 failures += 1
+        #exit(1)
 
     print('\nAll tests checked, totalling ' + str(failures) + ' errors!')
 
