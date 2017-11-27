@@ -770,7 +770,8 @@ class RawSpecFileParser(object):
      # Here we end with Unknown(Section)* sequence
      # The first Unknown context corresponds to the main section
      # Run individual section parsers
-     self._rawSpecfile = reduce(lambda x,y: x+y, map(lambda section: self.parse_section("main_section", section), sections))
+     if sections != []:
+        self._rawSpecfile = reduce(lambda x,y: x+y, map(lambda section: self.parse_section("main_section", section), sections))
 
      return self
 

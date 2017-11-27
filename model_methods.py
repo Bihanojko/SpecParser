@@ -1,6 +1,7 @@
 from __future__ import print_function
 import json, io
 from copy import deepcopy
+import sys
 
 from abstract_model import SpecfileClass, BlockTypes, keys_list
 from abstract_model import prettyprint_headervalue_position, prettyprint_macroname_position, BlockTypeUnknown
