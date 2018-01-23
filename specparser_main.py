@@ -6,8 +6,7 @@ import ruamel.yaml
 
 from tests import run_tests
 from examples import run_examples
-from model_methods import create_abstract_model, Specfile, class_to_specfile
-from model_methods import process_config_file, print_json_representation, remove_empty_fields
+from model_methods import ModelMethods
 from spec_model_generator import SpecModelGenerator
 from spec_model import SpecModel
 from go_spec_model_generator import GoSpecModelGenerator
@@ -60,6 +59,7 @@ def process_args(args):
 
     specModelGenerator = SpecModelGenerator()
     goSpecModelGenerator = GoSpecModelGenerator()
+    modelMethods = ModelMethods()
 
     # args.test == 1 => run all available tests
     if args.test:
@@ -78,22 +78,22 @@ def process_args(args):
     else:
         specpath = None
 
-    create_abstract_model(specpath)
+    modelMethods.create_abstract_model(specpath)
 
     # args.specfile is set => read and process input specfile, write output as a specfile 
     if args.specfile:
-        class_to_specfile(Specfile, args.pretty)
+        modelMethods.class_to_specfile(modelMethods.specfile, args.pretty)
 
     # args.model is set to 1 => output json in specfile 1.0 form
     if args.model and args.model == 1:
 
         # args.config is set => apply changes from given configuration file on specfile
         if args.config:
-            process_config_file(Specfile, args.config)
+            modelMethods.process_config_file(modelMethods.specfile, args.config)
 
     # args.model is not set or set to 2 => output specfile or json in specfile 2.0 form
     else:
-        specModel = specModelGenerator.create_specmodel(Specfile)
+        specModel = specModelGenerator.create_specmodel(modelMethods.specfile)
 
         # args.config is set => apply changes from given configuration file on specfile
         # if args.config:
@@ -102,17 +102,17 @@ def process_args(args):
     # args.json is set => read and process input specfile, write output in json
     if args.json:
         if args.model and args.model == 1 and not args.go_spec:
-            print_json_representation(Specfile, args.reduced)
+            modelMethods.print_json_representation(modelMethods.specfile, args.reduced)
         elif not args.go_spec:
-            print_json_representation(specModel, args.reduced)
+            modelMethods.print_json_representation(specModel, args.reduced)
 
     # args.debug is set => read and process input specfile, transform into 2.0 and then back to 1.0
     if args.debug and args.model == 2:
         rawspecfile = specModelGenerator.transform_specmodel_to_rawspec(specModel)
-        print(json.dumps(remove_empty_fields(rawspecfile), default=lambda o: o.__dict__, sort_keys=True))
+        print(json.dumps(modelMethods.remove_empty_fields(rawspecfile), default=lambda o: o.__dict__, sort_keys=True))
 
     if args.go_spec:
-        goSpecModelGenerator.create_go_spec_model(json.dumps(remove_empty_fields(specModel), default=lambda o: o.__dict__, sort_keys=True))
+        goSpecModelGenerator.create_go_spec_model(json.dumps(modelMethods.remove_empty_fields(specModel), default=lambda o: o.__dict__, sort_keys=True))
 
         # print(json.dumps(GoSpecfile, default=lambda o: o.__dict__, sort_keys=True) + "\n\n")
         # print(ruamel.yaml.dump(ruamel.yaml.safe_load(json.dumps(reduce_gospecmodel(), default=lambda o: o.__dict__, sort_keys=True))))
@@ -126,7 +126,7 @@ def process_args(args):
     # args.debug is set => read and process input specfile, transform into 2.0 and then back to 1.0
     if args.debug and args.model == 3:
         specmodel_from_gospec = goSpecModelGenerator.transform_gospec_to_specmodel(json.dumps(goSpecModelGenerator.gospecmodel, default=lambda o: o.__dict__, sort_keys=True))
-        print(json.dumps(remove_empty_fields(json.loads(specmodel_from_gospec)), default=lambda o: o.__dict__, sort_keys=True))
+        print(json.dumps(modelMethods.remove_empty_fields(json.loads(specmodel_from_gospec)), default=lambda o: o.__dict__, sort_keys=True))
 
 
 
