@@ -175,7 +175,8 @@ class SpecModelGenerator(object):
         self._block_list, self._metastrings = self._processBlockList(raw)
         self._toAbstractModel(self._metastrings, self._block_list)
         #MMetastring(self._metastrings).format(self._spec_model)
-        return self
+        self._spec_model._metastrings = self._metastrings
+        return self._spec_model
 
     def _processBlockList(self, block_list, predicate_list = []):
         processed_blocks = []
@@ -316,6 +317,7 @@ class SpecModelGenerator(object):
         for i, block in enumerate(block_list):
             if block.block_type == BlockTypes.MacroDefinitionType:
                 metastrings[ms_idx].setBlockIdx(ModelTypes.Macros, self._spec_model.addMacro(block))
+                block.id = metastrings[ms_idx].blockIdx()
                 ms_idx += 1
                 continue
 
@@ -324,20 +326,24 @@ class SpecModelGenerator(object):
                 metastrings[ms_idx].setBlockIdx(ModelTypes.Macros, self._spec_model.addMacro(block))
                 if block.content != []:
                     self._toAbstractModel(metastrings[ms_idx].getContentMetastring(), block.content)
+                block.id = metastrings[ms_idx].blockIdx()
                 ms_idx += 1
                 continue
 
             if block.block_type == BlockTypes.CommentType:
                 metastrings[ms_idx].setBlockIdx(ModelTypes.Comment, self._spec_model.addComment(block))
+                block.id = metastrings[ms_idx].blockIdx()
                 ms_idx += 1
                 continue
 
             if block.block_type == BlockTypes.Uninterpreted:
                 metastrings[ms_idx].setBlockIdx(ModelTypes.Uninterpreted, self._spec_model.addUninterpreted(block))
+                block.id = metastrings[ms_idx].blockIdx()
                 ms_idx += 1
                 continue
 
             if block.block_type == BlockTypes.Whitespaces:
+                block.id = metastrings[ms_idx].blockIdx()
                 ms_idx += 1
                 continue
 
@@ -345,6 +351,7 @@ class SpecModelGenerator(object):
                 idx = self._spec_model.addTag(block)
                 metastrings[ms_idx].setBlockIdx(ModelTypes.Tag, idx)
                 metastrings[ms_idx].format(self._spec_model)
+                block.id = metastrings[ms_idx].blockIdx()
                 ms_idx += 1
                 continue
 
@@ -355,6 +362,7 @@ class SpecModelGenerator(object):
                     self._toAbstractModel(metastrings[ms_idx].getIfBodyMetastring(), block.content)
                 if block.else_body != []:
                     self._toAbstractModel(metastrings[ms_idx].getElseBodyMetastring(), block.else_body)
+                block.id = metastrings[ms_idx].blockIdx()
                 ms_idx += 1
                 continue
 
@@ -362,12 +370,14 @@ class SpecModelGenerator(object):
                 metastrings[ms_idx].setBlockIdx(ModelTypes.Package, self._spec_model.addPackage(block))
                 if block.content != []:
                     self._toAbstractModel(metastrings[ms_idx].getContentMetastring(), block.content)
+                block.id = metastrings[ms_idx].blockIdx()
                 ms_idx += 1
                 continue
 
             if block.block_type == BlockTypes.ChangelogTagType:
                 metastrings[ms_idx].setBlockIdx(ModelTypes.Changelog)
                 self._spec_model.setChangelog(block)
+                block.id = metastrings[ms_idx].blockIdx()
                 ms_idx += 1
                 continue
 
@@ -376,12 +386,14 @@ class SpecModelGenerator(object):
                     metastrings[ms_idx].setBlockIdx(ModelTypes.Description, self._spec_model.addDescription(block))
                     if block.content != []:
                         self._toAbstractModel(metastrings[ms_idx].getContentMetastring(), block.content)
+                    block.id = metastrings[ms_idx].blockIdx()
                     ms_idx += 1
                     continue
                 if block.keyword == "%files":
                     metastrings[ms_idx].setBlockIdx(ModelTypes.Files, self._spec_model.addFiles(block))
                     if block.content != []:
                         self._toAbstractModel(metastrings[ms_idx].getContentMetastring(), block.content)
+                    block.id = metastrings[ms_idx].blockIdx()
                     ms_idx += 1
                     continue
                 if block.keyword == "%prep":
@@ -389,6 +401,7 @@ class SpecModelGenerator(object):
                     self._spec_model.setPrep(block)
                     if block.content != []:
                         self._toAbstractModel(metastrings[ms_idx].getContentMetastring(), block.content)
+                    block.id = metastrings[ms_idx].blockIdx()
                     ms_idx += 1
                     continue
                 if block.keyword == "%build":
@@ -396,6 +409,7 @@ class SpecModelGenerator(object):
                     self._spec_model.setBuild(block)
                     if block.content != []:
                         self._toAbstractModel(metastrings[ms_idx].getContentMetastring(), block.content)
+                    block.id = metastrings[ms_idx].blockIdx()
                     ms_idx += 1
                     continue
                 if block.keyword == "%install":
@@ -403,6 +417,7 @@ class SpecModelGenerator(object):
                     self._spec_model.setInstall(block)
                     if block.content != []:
                         self._toAbstractModel(metastrings[ms_idx].getContentMetastring(), block.content)
+                    block.id = metastrings[ms_idx].blockIdx()
                     ms_idx += 1
                     continue
                 if block.keyword == "%check":
@@ -410,12 +425,14 @@ class SpecModelGenerator(object):
                     self._spec_model.setCheck(block)
                     if block.content != []:
                         self._toAbstractModel(metastrings[ms_idx].getContentMetastring(), block.content)
+                    block.id = metastrings[ms_idx].blockIdx()
                     ms_idx += 1
                     continue
 
                 metastrings[ms_idx].setBlockIdx(ModelTypes.OtherSection, self._spec_model.addSection(block))
                 if block.content != []:
                     self._toAbstractModel(metastrings[ms_idx].getContentMetastring(), block.content)
+                block.id = metastrings[ms_idx].blockIdx()
                 ms_idx += 1
                 continue
 

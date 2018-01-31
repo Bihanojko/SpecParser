@@ -19,6 +19,7 @@ class HeaderTagBlock(Block):
         self.option = option
         self.content = content
         self.AP = None
+        self.id = None
 
     def to_json(self):
         return self._filter({
@@ -27,6 +28,7 @@ class HeaderTagBlock(Block):
           "key": self.key,
           "option": self.option,
           "content": self.content,
+          "id": self.id,
         })
 
 class SectionBlock(Block):
@@ -38,6 +40,7 @@ class SectionBlock(Block):
         self.subname = subname
         self.name = name
         self.AP = None
+        self.id = None
 
     def to_json(self):
         return self._filter({
@@ -48,7 +51,8 @@ class SectionBlock(Block):
           "content": self.content if isinstance(self.content, basestring) else map(lambda l: l.to_json(), self.content),
           "parameters": self.parameters,
           "subname": self.subname,
-          "name": self.name
+          "name": self.name,
+          "id": self.id,
         })
 
 class PackageBlock(Block):
@@ -59,6 +63,7 @@ class PackageBlock(Block):
         self.parameters = parameters
         self.subname = subname
         self.AP = None
+        self.id = None
 
     def to_json(self):
         return self._filter({
@@ -67,7 +72,8 @@ class PackageBlock(Block):
           "keyword": self.keyword,
           "content": map(lambda l: l.to_json(), self.content),
           "parameters": self.parameters,
-          "subname": self.subname
+          "subname": self.subname,
+          "id": self.id,
         })
 
 class ChangelogBlock(Block):
@@ -76,13 +82,15 @@ class ChangelogBlock(Block):
         self.keyword = keyword
         self.content = content
         self.AP = None
+        self.id = None
 
     def to_json(self):
         return self._filter({
           "AP": self.AP,
           "block_type": self.block_type,
           "keyword": self.keyword,
-          "content": self.content
+          "content": self.content,
+          "id": self.id,
         })
 
 class MacroDefinitionBlock(Block):
@@ -93,6 +101,7 @@ class MacroDefinitionBlock(Block):
         self.options = options
         self.body = body
         self.AP = None
+        self.id = None
 
     def to_json(self):
         return self._filter({
@@ -102,6 +111,7 @@ class MacroDefinitionBlock(Block):
           "keyword": self.keyword,
           "options": self.options,
           "body": self.body,
+          "id": self.id,
         })
 
 class MacroUndefinitionBlock(Block):
@@ -110,13 +120,15 @@ class MacroUndefinitionBlock(Block):
         self.name = name
         self.keyword = keyword
         self.AP = None
+        self.id = None
 
     def to_json(self):
         return self._filter({
           "AP": self.AP,
           "block_type": self.block_type,
           "name": self.name,
-          "keyword": self.keyword
+          "keyword": self.keyword,
+          "id": self.id,
         })
 
 class MacroConditionBlock(Block):
@@ -127,6 +139,7 @@ class MacroConditionBlock(Block):
         self.content = content
         self.ending = ending
         self.AP = None
+        self.id = None
 
     def to_json(self):
         return self._filter({
@@ -136,6 +149,7 @@ class MacroConditionBlock(Block):
           "condition": self.condition,
           "content": map(lambda l: l.to_json(), self.content),
           "ending": self.ending,
+          "id": self.id,
         })
 
 class CommentBlock(Block):
@@ -143,12 +157,14 @@ class CommentBlock(Block):
         self.block_type = BlockTypes.CommentType
         self.content = content
         self.AP = None
+        self.id = None
 
     def to_json(self):
         return self._filter({
           "AP": self.AP,
           "block_type": self.block_type,
           "content": self.content,
+          "id": self.id,
         })
 
 class WhitespacesBlock(Block):
@@ -156,12 +172,14 @@ class WhitespacesBlock(Block):
         self.block_type = BlockTypes.Whitespaces
         self.content = content
         self.AP = None
+        self.id = None
 
     def to_json(self):
         return self._filter({
           "AP": self.AP,
           "block_type": self.block_type,
           "content": self.content,
+          "id": self.id,
         })
 
 class ConditionBlock(Block):
@@ -175,6 +193,7 @@ class ConditionBlock(Block):
         # If else keyword is None, the else_body is ignored
         self.else_keyword = else_keyword
         self.AP = None
+        self.id = None
 
     def to_json(self):
         return self._filter({
@@ -186,6 +205,7 @@ class ConditionBlock(Block):
           "else_keyword": self.else_keyword,
           "else_body": map(lambda l: l.to_json(), self.else_body),
           "end_keyword": self.end_keyword,
+          "id": self.id,
         })
 
 class UninterpretedBlock(Block):
@@ -193,12 +213,14 @@ class UninterpretedBlock(Block):
         self.block_type = BlockTypes.Uninterpreted
         self.content = content
         self.AP = None
+        self.id = None
 
     def to_json(self):
         return self._filter({
           "AP": self.AP,
           "block_type": self.block_type,
           "content": self.content,
+          "id": self.id,
         })
 
 class RawConditionBlock(Block):
@@ -210,6 +232,7 @@ class RawConditionBlock(Block):
         self.else_body = else_body
         self.end_keyword = end_keyword
         self.else_keyword = else_keyword
+        self.id = None
 
     def to_json(self):
         return self._filter({
@@ -220,6 +243,7 @@ class RawConditionBlock(Block):
           "else_keyword": self.else_keyword,
           "else_body": map(lambda l: l.to_json(), self.else_body),
           "end_keyword": self.end_keyword,
+          "id": self.id,
         })
 
 class RawContextType:
