@@ -4,7 +4,7 @@ from copy import deepcopy
 import json
 
 
-from abstract_model import SpecfileClass, BlockTypes, keys_list
+from abstract_model import BlockTypes, keys_list
 from metastring import Metastring
 from spec_model import SpecModel
 from spec_model_generator import SpecModelGenerator
