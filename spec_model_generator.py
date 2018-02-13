@@ -89,7 +89,7 @@ class SpecModelGenerator(object):
             if 'content' in block and block['block_type'] in [3]:
                 cls.specmodel.metastring += metastring1[:metastring1.find('%3')]
                 metastring1 = '#' + str(block['block_type']) + str(sequence_number) + metastring1[metastring1.find('%3'):]
-                
+
                 SpecModelGenerator.transform_rawspec_to_specmodel(block['content'], package_name)
                 del block['content']
 
