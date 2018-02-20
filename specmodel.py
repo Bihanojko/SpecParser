@@ -1,3 +1,4 @@
+from __future__ import print_function
 from abstract_model import BlockTypes, BlockTypeUnknown
 from metastring import HeaderTagMetastring, SectionMetastring, ConditionMetastring, MacroConditionMetastring, MacroDefinitionMetastring, CommentMetastring, ChangelogMetastring, PackageMetastring, MMetastring, WhitespacesMetastring, UninterpretedMetastring
 
@@ -314,7 +315,7 @@ class SpecModelGenerator(object):
     def _toAbstractModel(self, metastrings, block_list):
 
         ms_idx = 0
-        for i, block in enumerate(block_list):
+        for _, block in enumerate(block_list):
             if block.block_type == BlockTypes.MacroDefinitionType:
                 metastrings[ms_idx].setBlockIdx(ModelTypes.Macros, self._spec_model.addMacro(block))
                 block.id = metastrings[ms_idx].blockIdx()
@@ -475,12 +476,12 @@ class SpecModelGenerator(object):
         for metastring in metastrings:
             if metastring.modelType() == ModelTypes.Condition:
                 expression = self._conditions[metastring.blockIdx()]
-                print metastring
-                print metastring.blockIdx()
+                print(metastring)
+                print(metastring.blockIdx())
 
                 #self._generate_spec
 
-                print metastring.hasElseBody()
+                print(metastring.hasElseBody())
 
             exit(1)
 
