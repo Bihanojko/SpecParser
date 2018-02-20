@@ -70,17 +70,17 @@ class SpecModelTransformator(object):
             setattr(self.transformationModel._comments[metastring.blockIdx()], '_metastring', metastring)
         # TODO
         # elif metastring.modelType() == ModelTypes.Condition:
-        #     setattr(self.transformationModel._conditions[metastring.blockIdx()], '_metastring', metastring)
-        # elif metastring.modelType() == ModelTypes.Prep:
-        #     setattr(self.transformationModel._prep[metastring.blockIdx()], '_metastring', metastring)
-        # elif metastring.modelType() == ModelTypes.Build:
-        #     setattr(self.transformationModel._build[metastring.blockIdx()], '_metastring', metastring)
-        # elif metastring.modelType() == ModelTypes.Install:
-        #     setattr(self.transformationModel._install[metastring.blockIdx()], '_metastring', metastring)
-        # elif metastring.modelType() == ModelTypes.Check:
-        #     setattr(self.transformationModel._check[metastring.blockIdx()], '_metastring', metastring)
-        # elif metastring.modelType() == ModelTypes.Changelog:
-        #     setattr(self.transformationModel._changelog[metastring.blockIdx()], '_metastring', metastring)
+            # setattr(self.transformationModel._conditions[metastring.blockIdx()], '_metastring', metastring)
+        elif metastring.modelType() == ModelTypes.Prep:
+            setattr(self.transformationModel._prep, 'metastring', metastring)
+        elif metastring.modelType() == ModelTypes.Build:
+            setattr(self.transformationModel._build, '_metastring', metastring)
+        elif metastring.modelType() == ModelTypes.Install:
+            setattr(self.transformationModel._install, '_metastring', metastring)
+        elif metastring.modelType() == ModelTypes.Check:
+            setattr(self.transformationModel._check, '_metastring', metastring)
+        elif metastring.modelType() == ModelTypes.Changelog:
+            setattr(self.transformationModel._changelog, '_metastring', metastring)
         elif metastring.modelType() == ModelTypes.Uninterpreted:
             setattr(self.transformationModel._uninterpreted[metastring.blockIdx()], '_metastring', metastring)
 
