@@ -8,8 +8,8 @@ from tests import run_tests
 from examples import run_examples
 from model_methods import ModelMethods
 from spec_model_generator import SpecModelGenerator
-from spec_model import SpecModel
 from go_spec_model_generator import GoSpecModelGenerator
+from spec_transformator import SpecModelTransformator
 
 
 
@@ -78,40 +78,27 @@ def process_args(args):
     else:
         specpath = None
 
-    modelMethods.create_abstract_model(specpath)
+    specModel = modelMethods.create_abstract_model(specpath)
 
-    # args.specfile is set => read and process input specfile, write output as a specfile 
+    # args.specfile is set => read and process input specfile, write output as a specfile
     if args.specfile:
-        modelMethods.class_to_specfile(modelMethods.specfile, args.pretty)
+        # TODO
+        modelMethods.class_to_specfile(specModel, args.pretty)
 
-    # args.model is set to 1 => output json in specfile 1.0 form
-    if args.model and args.model == 1:
+    # args.model is set to 1 and args.json is set => read and process input specfile, output specmodel in json
+    if args.model and args.model == 1 and args.json:
+        modelMethods.print_json_representation(specModel, args.reduced)
+        print(json.dumps(specModel, default=lambda o: o.__dict__, sort_keys=True))
 
         # args.config is set => apply changes from given configuration file on specfile
         if args.config:
-            modelMethods.process_config_file(modelMethods.specfile, args.config)
+            modelMethods.process_config_file(specModel, args.config)
 
-    # args.model is not set or set to 2 => output specfile or json in specfile 2.0 form
-    else:
-        specModel = specModelGenerator.create_specmodel(modelMethods.specfile)
-
-        # args.config is set => apply changes from given configuration file on specfile
-        # if args.config:
-        #     process_config_file(Specfile, args.config)
-
-    # args.json is set => read and process input specfile, write output in json
-    if args.json:
-        if args.model and args.model == 1 and not args.go_spec:
-            modelMethods.print_json_representation(modelMethods.specfile, args.reduced)
-        elif not args.go_spec:
-            modelMethods.print_json_representation(specModel, args.reduced)
-
-    # args.debug is set => read and process input specfile, transform into 2.0 and then back to 1.0
-    if args.debug and args.model == 2:
-        rawspecfile = specModelGenerator.transform_specmodel_to_rawspec(specModel)
-        print(json.dumps(modelMethods.remove_empty_fields(rawspecfile), default=lambda o: o.__dict__, sort_keys=True))
+    # specModel = specModelGenerator.create_specmodel(specModel)
+    # specTransformator = SpecModelTransformator(specModel)
 
     if args.go_spec:
+        # TODO
         goSpecModelGenerator.create_go_spec_model(json.dumps(modelMethods.remove_empty_fields(specModel), default=lambda o: o.__dict__, sort_keys=True))
 
         # print(json.dumps(GoSpecfile, default=lambda o: o.__dict__, sort_keys=True) + "\n\n")
@@ -123,8 +110,9 @@ def process_args(args):
                                               default_flow_style=False, indent=4,
                                               block_seq_indent=2, width=80))
 
-    # args.debug is set => read and process input specfile, transform into 2.0 and then back to 1.0
+    # args.debug is set => read and process input specfile, transform into gospec model and then back to specmodel
     if args.debug and args.model == 3:
+        # TODO
         specmodel_from_gospec = goSpecModelGenerator.transform_gospec_to_specmodel(json.dumps(goSpecModelGenerator.gospecmodel, default=lambda o: o.__dict__, sort_keys=True))
         print(json.dumps(modelMethods.remove_empty_fields(json.loads(specmodel_from_gospec)), default=lambda o: o.__dict__, sort_keys=True))
 
