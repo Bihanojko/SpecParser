@@ -4,7 +4,7 @@ from copy import deepcopy
 
 from metastring import Metastring
 from abstract_model import BlockTypes, SpecfileClass
-from spec_model import SpecModel
+from specmodel import SpecModel
 # from go_spec_model_generator import GoSpecModelGenerator
 
 
