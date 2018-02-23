@@ -42,19 +42,21 @@ class ModelMethods(object):
         inputfile_content = self.open_file(input_filepath)
         try:
             json_containing_parsed_spec = json.loads(inputfile_content)
-        except ValueError, e:
+        except ValueError, _:
             parser = RawSpecFileParser(inputfile_content).parse()
             json_containing_parsed_spec = parser.json()
             raw = parser.raw()
+        return SpecModelGenerator().fromRawSpecfile(raw)
 
-        if 'metastring' in json_containing_parsed_spec and json_containing_parsed_spec['metastring'] != '':
-            self.specfile.block_list = json_containing_parsed_spec['block_list']
-            self.specfile.metastring = json_containing_parsed_spec['metastring']
-        else:
-            spec_model = SpecModelGenerator().fromRawSpecfile(raw)
-            data = spec_model.model_to_json()
-            self.specfile.metastring = data["metastring"]
-            self.specfile.block_list = json.loads(json.dumps(data["block_list"], sort_keys=True))
+        # TODO load model from input json
+        # if 'metastring' in json_containing_parsed_spec and json_containing_parsed_spec['metastring'] != '':
+        #     self.specfile.block_list = json_containing_parsed_spec['block_list']
+        #     self.specfile.metastring = json_containing_parsed_spec['metastring']
+        # else:
+        #     return SpecModelGenerator().fromRawSpecfile(raw)
+        #     data = spec_model.model_to_json()
+        #     self.specfile.metastring = data["metastring"]
+        #     self.specfile.block_list = json.loads(json.dumps(data["block_list"], sort_keys=True))
 
 
     @staticmethod
