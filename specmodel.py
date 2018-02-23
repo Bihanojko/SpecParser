@@ -59,6 +59,7 @@ class SpecModel(object):
         self._changelog = {}
         self._other_sections = []
         self._conditions = []
+        self._predicates = []
         self._comments = []
         self._uninterpreted = []
 
@@ -147,6 +148,14 @@ class SpecModel(object):
 
     def getCondition(self, idx):
         return self._conditions[idx]
+
+    def addPredicate(self, data):
+        idx = len(self._predicates)
+        self._predicates.append(data)
+        return idx
+
+    def getPredicate(self, idx):
+        return self._predicates[idx]
 
     def addComment(self, data):
         idx = len(self._comments)
@@ -357,7 +366,10 @@ class SpecModelGenerator(object):
                 continue
 
             if block.block_type == BlockTypes.ConditionType:
-                metastrings[ms_idx].setBlockIdx(ModelTypes.Condition, self._spec_model.addCondition(block.expression))
+                idx = self._spec_model.addCondition(block)
+                metastrings[ms_idx].setBlockIdx(ModelTypes.Condition, idx)
+                # metastrings[ms_idx].format(self._spec_model)
+                self._spec_model.addPredicate(self._spec_model._conditions[idx].expression)
                 # TODO(jchaloup): distribute the APs properly
                 if block.content != []:
                     self._toAbstractModel(metastrings[ms_idx].getIfBodyMetastring(), block.content)
