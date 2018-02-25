@@ -295,7 +295,7 @@ class ConditionMetastring(BaseMetastring):
         for item in self._else_body:
             else_body.append(item.format(specmodel))
 
-        return "{}{}{}{}{}{}".format(self._keyword.format("%if"), self._expression.format(condition), "".join(if_body), self._else_keyword.format("%else"), "".join(else_body), self._end_keyword.format("%endif"))
+        return "{}{}{}{}{}{}".format(self._keyword.format("%if"), self._expression.format(condition.expression), "".join(if_body), self._else_keyword.format("%else"), "".join(else_body), self._end_keyword.format("%endif"))
 
 class MacroConditionMetastring(BaseMetastring):
     def __init__(self, condition, name, ending):
@@ -355,7 +355,7 @@ class MacroDefinitionMetastring(BaseMetastring):
         if macro.options == None:
             return "{}{}{}".format(self._keyword.format(macro.keyword), self._name.format(macro.name), self._body.format(macro.body))
         else:
-            return "{}{}({}){}".format(self._keyword.format(macro.keyword), self._name.format(macro.name), self._options.format(macro.options), self._body.format(macro.body))
+            return "{}{}{}{}".format(self._keyword.format(macro.keyword), self._name.format(macro.name), self._options.format(macro.options), self._body.format(macro.body))
 
 class CommentMetastring(BaseMetastring):
     def __init__(self, content):

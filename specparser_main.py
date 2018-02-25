@@ -7,7 +7,8 @@ import ruamel.yaml
 from tests import run_tests
 from examples import run_examples
 from model_methods import ModelMethods
-from spec_model_generator import SpecModelGenerator
+from specmodel import SpecModelGenerator
+# from spec_model_generator import SpecModelGenerator
 from go_spec_model_generator import GoSpecModelGenerator
 from spec_transformator import SpecModelTransformator
 
@@ -82,8 +83,7 @@ def process_args(args):
 
     # args.specfile is set => read and process input specfile, write output as a specfile
     if args.specfile:
-        # TODO
-        modelMethods.class_to_specfile(specModel, args.pretty)
+        specModelGenerator.to_spec(specModel)
 
     # args.model is set to 1 and args.json is set => read and process input specfile, output specmodel in json
     if args.model and args.model == 1 and args.json:

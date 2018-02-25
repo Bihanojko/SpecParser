@@ -484,18 +484,9 @@ class SpecModelGenerator(object):
             "metastring": self.metastrings_to_str(),
         }
 
-    def _generate_spec(self, metastrings):
-        for metastring in metastrings:
-            if metastring.modelType() == ModelTypes.Condition:
-                expression = self._conditions[metastring.blockIdx()]
-                print(metastring)
-                print(metastring.blockIdx())
+    def _generate_spec(self, specModel):
+        for metastring in specModel._metastrings:
+            print(metastring.format(specModel), end = '')
 
-                #self._generate_spec
-
-                print(metastring.hasElseBody())
-
-            exit(1)
-
-    def to_spec(self):
-        self._generate_spec(self._metastrings)
+    def to_spec(self, specModel):
+        self._generate_spec(specModel)
