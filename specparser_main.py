@@ -88,7 +88,7 @@ def process_args(args):
     # args.model is set to 1 and args.json is set => read and process input specfile, output specmodel in json
     if args.model and args.model == 1 and args.json:
         modelMethods.print_json_representation(specModel, args.reduced)
-        print(json.dumps(specModel, default=lambda o: o.__dict__, sort_keys=True))
+        # print(json.dumps(specModel, default=lambda o: o.__dict__, sort_keys=True))
 
         # args.config is set => apply changes from given configuration file on specfile
         if args.config:
