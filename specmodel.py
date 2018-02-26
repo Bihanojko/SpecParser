@@ -187,6 +187,11 @@ class SpecModelGenerator(object):
         #MMetastring(self._metastrings).format(self._spec_model)
         self._spec_model._metastrings = self._metastrings
         return self._spec_model
+    
+    def fromJsonInput(self, json):
+        for attr in json:
+            setattr(self._spec_model, attr, json[attr])
+        return self._spec_model
 
     def _processBlockList(self, block_list, predicate_list = []):
         processed_blocks = []

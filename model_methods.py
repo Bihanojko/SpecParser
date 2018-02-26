@@ -42,11 +42,12 @@ class ModelMethods(object):
         inputfile_content = self.open_file(input_filepath)
         try:
             json_containing_parsed_spec = json.loads(inputfile_content)
+            return SpecModelGenerator().fromJsonInput(json_containing_parsed_spec)
         except ValueError, _:
             parser = RawSpecFileParser(inputfile_content).parse()
             json_containing_parsed_spec = parser.json()
             raw = parser.raw()
-        return SpecModelGenerator().fromRawSpecfile(raw)
+            return SpecModelGenerator().fromRawSpecfile(raw)
 
         # TODO load model from input json
         # if 'metastring' in json_containing_parsed_spec and json_containing_parsed_spec['metastring'] != '':
