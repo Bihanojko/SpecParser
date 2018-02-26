@@ -182,7 +182,7 @@ class SectionMetastring(BaseMetastring):
                 for param in section.parameters:
                     params.append("-{}{}".format(param["key"], param["value"]))
 
-            return "{}{}{}{}{}".format(self._keyword.format(section.keyword), self._name.format(section.name), self._parameters.format(" ".join(params)), self._subname.format(section.subname), "".join(body))
+            return "{}{}{}{}\n{}".format(self._keyword.format(section.keyword), self._name.format(section.name), self._parameters.format(" ".join(params)), self._subname.format(section.subname), "".join(body))
 
         if self._model_type in [ModelTypes.Prep, ModelTypes.Build, ModelTypes.Install, ModelTypes.Check, ModelTypes.OtherSection]:
             if self._model_type == ModelTypes.Prep:
@@ -199,7 +199,7 @@ class SectionMetastring(BaseMetastring):
             body = []
             for item in self._content:
                 body.append(item.format(specmodel))
-            return "{}{}".format(self._keyword.format(section.keyword), "".join(body))
+            return "{}\n{}".format(self._keyword.format(section.keyword), "".join(body))
 
         if self._model_type == ModelTypes.Files:
             section = specmodel.getFiles(self._block_idx)
