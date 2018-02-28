@@ -190,7 +190,7 @@ class SectionMetastring(BaseMetastring):
             if self._model_type == ModelTypes.Build:
                 section = specmodel.getBuild()
             if self._model_type == ModelTypes.Install:
-                section = specmodel.getBuild()
+                section = specmodel.getInstall()
             if self._model_type == ModelTypes.Check:
                 section = specmodel.getCheck()
             if self._model_type == ModelTypes.OtherSection:

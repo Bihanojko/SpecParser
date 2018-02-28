@@ -434,7 +434,7 @@ parser SpecfileParser:
                             BEGINNING   {{ if BEGINNING != "": self._rawSpecFile.block_list.append(WhitespacesBlock(BEGINNING)) }}
                           )?
                           SECTION_KEY_NOPARSE_PURE NEWLINE uninterpreted_section_content
-                          {{ self._rawSpecFile.block_list.append(SectionBlock(SECTION_KEY_NOPARSE_PURE + NEWLINE, None, None, None, [uninterpreted_section_content])) }}
+                          {{ self._rawSpecFile.block_list.append(SectionBlock(SECTION_KEY_NOPARSE_PURE, None, None, None, [uninterpreted_section_content])) }}
 
     rule package_section_content:   {{ package_body = [] }}
                                     (

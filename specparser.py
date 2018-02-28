@@ -499,7 +499,7 @@ class SpecfileParser(runtime.Parser):
         SECTION_KEY_NOPARSE_PURE = self._scan('SECTION_KEY_NOPARSE_PURE', context=_context)
         NEWLINE = self._scan('NEWLINE', context=_context)
         uninterpreted_section_content = self.uninterpreted_section_content(_context)
-        self._rawSpecFile.block_list.append(SectionBlock(SECTION_KEY_NOPARSE_PURE + NEWLINE, None, None, None, [uninterpreted_section_content]))
+        self._rawSpecFile.block_list.append(SectionBlock(SECTION_KEY_NOPARSE_PURE, None, None, None, [uninterpreted_section_content]))
 
     def package_section_content(self, _parent=None):
         _context = self.Context(_parent, self._scanner, 'package_section_content', [])
