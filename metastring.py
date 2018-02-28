@@ -31,7 +31,7 @@ class KeyMetastring(object):
         self._is_none = False
 
     def fromBlock(self, string, idx):
-        if string == None:
+        if string is None:
             self._is_none = True
             return self
 
@@ -51,7 +51,7 @@ class KeyMetastring(object):
 
     @staticmethod
     def cleanBlock(string):
-        if string == None:
+        if string is None:
             return None
 
         if isinstance(string, basestring):
@@ -136,7 +136,7 @@ class HeaderTagMetastring(BaseMetastring):
 
     def format(self, specmodel):
         tag = specmodel.getTag(self._block_idx)
-        if tag.option == None:
+        if tag.option is None:
             return "{}:{}".format(self._key.format(tag.key), self._content.format(tag.content))
         else:
             return "{}({}):{}".format(self._key.format(tag.key), self._option.format(tag.option), self._content.format(tag.content))
@@ -352,7 +352,7 @@ class MacroDefinitionMetastring(BaseMetastring):
 
     def format(self, specmodel):
         macro = specmodel.getMacro(self._block_idx)
-        if macro.options == None:
+        if macro.options is None:
             return "{}{}{}".format(self._keyword.format(macro.keyword), self._name.format(macro.name), self._body.format(macro.body))
         else:
             return "{}{}{}{}".format(self._keyword.format(macro.keyword), self._name.format(macro.name), self._options.format(macro.options), self._body.format(macro.body))
