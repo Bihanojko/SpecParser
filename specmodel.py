@@ -1,6 +1,9 @@
 from __future__ import print_function
 from abstract_model import BlockTypes, BlockTypeUnknown
 from metastring import HeaderTagMetastring, SectionMetastring, ConditionMetastring, MacroConditionMetastring, MacroDefinitionMetastring, CommentMetastring, ChangelogMetastring, PackageMetastring, MMetastring, WhitespacesMetastring, UninterpretedMetastring
+from specparser import MacroDefinitionBlock, CommentBlock, ConditionBlock, HeaderTagBlock, SectionBlock, PackageBlock, ChangelogBlock, MacroUndefinitionBlock, MacroConditionBlock, UninterpretedBlock
+
+import json
 
 # Condition-free layout of a specfile 2.0
 #
@@ -186,12 +189,123 @@ class SpecModelGenerator(object):
         self._toAbstractModel(self._metastrings, self._block_list)
         #MMetastring(self._metastrings).format(self._spec_model)
         self._spec_model._metastrings = self._metastrings
+        print(self._spec_model._metastrings)
+        exit(0)
         return self._spec_model
     
-    def fromJsonInput(self, json):
-        for attr in json:
-            setattr(self._spec_model, attr, json[attr])
+    def fromJsonInput(self, json_input):
+        loaded_json = json.loads(json_input)
+        for x in loaded_json:
+            setattr(self._spec_model, x, loaded_json[x])
+        self._recreateBlocks()
+        self._recreateMetastringObjects()
+        # print(self._spec_model._metastrings)
+        # exit(0)
         return self._spec_model
+
+    def _recreateBlocks(self):
+        metadata_macros = self._spec_model._metadata_macros
+        self._spec_model._metadata_macros = []
+        for x in metadata_macros:
+            self._spec_model._metadata_macros.append(MacroDefinitionBlock(x['name'], x['keyword'], x['options'], x['body']))
+
+        comments = self._spec_model._comments
+        self._spec_model._comments = []
+        for x in comments:
+            self._spec_model._comments.append(CommentBlock(x['content']))
+
+        conditions = self._spec_model._conditions
+        self._spec_model._conditions = []
+        for x in conditions:
+            self._spec_model._conditions.append(ConditionBlock(x['keyword'], x['expression'], x['content'], x['else_body'], x['end_keyword'], x['else_keyword']))
+
+        metadata_tags = self._spec_model._metadata_tags
+        self._spec_model._metadata_tags = []
+        for x in metadata_tags:
+            self._spec_model._metadata_tags.append(HeaderTagBlock(x['key'], x['content'], x['option']))
+
+        packages = self._spec_model._packages
+        self._spec_model._packages = []
+        for x in packages:
+            self._spec_model._packages.append(PackageBlock(x['keyword'], x['parameters'], x['subname'], x['content']))
+
+        descriptions = self._spec_model._descriptions
+        self._spec_model._descriptions = []
+        for x in descriptions:
+            self._spec_model._descriptions.append(SectionBlock(x['keyword'], x['parameters'], x['name'], x['subname'], x['content']))
+
+        files = self._spec_model._files
+        self._spec_model._files = []
+        for x in files:
+            self._spec_model._files.append(SectionBlock(x['keyword'], x['parameters'], x['name'], x['subname'], x['content']))
+
+        other_sections = self._spec_model._other_sections
+        self._spec_model._other_sections = []
+        for x in other_sections:
+            self._spec_model._other_sections.append(SectionBlock(x['keyword'], x['parameters'], x['name'], x['subname'], x['content']))
+
+        uninterpreted = self._spec_model._uninterpreted
+        self._spec_model._uninterpreted = []
+        for x in uninterpreted:
+            self._spec_model._uninterpreted.append(UninterpretedBlock(x['content']))
+
+        if self._spec_model._prep != {}:
+            prep = self._spec_model._prep
+            self._spec_model._prep = SectionBlock(prep['keyword'], prep['parameters'], prep['name'], prep['subname'], prep['content'])
+
+        if self._spec_model._build != {}:
+            build = self._spec_model._build
+            self._spec_model._build = SectionBlock(build['keyword'], build['parameters'], build['name'], build['subname'], build['content'])
+
+        if self._spec_model._install != {}:
+            install = self._spec_model._install
+            self._spec_model._install = SectionBlock(install['keyword'], install['parameters'], install['name'], install['subname'], install['content'])
+
+        if self._spec_model._check != {}:
+            check = self._spec_model._check
+            self._spec_model._check = SectionBlock(check['keyword'], check['parameters'], check['name'], check['subname'], check['content'])
+
+        if self._spec_model._changelog != {}:
+            changelog = self._spec_model._changelog
+            self._spec_model._changelog = ChangelogBlock(changelog['keyword'], changelog['content'])
+
+    def _recreateMetastringObjects(self):
+        raw_metastrings = self._spec_model._metastrings
+        self._spec_model._metastrings = []
+        for single_object in raw_metastrings:
+            self._spec_model._metastrings.append(self._formObject(single_object))
+
+    # TODO
+    def _formObject(self, single_object):
+        # print(single_object)
+        # return None
+        if single_object['_type'] == BlockTypes.HeaderTagType:
+            return HeaderTagMetastring(single_object['_key'], single_object['_option'], single_object['_content'])
+        # TODO - problem with keyword stripping
+        # elif single_object['_type'] == BlockTypes.SectionTagType:
+        #     for attr in ["_keyword", "_name", "_parameters", "_subname"]:
+        #         if attr not in single_object:
+        #             single_object[attr] = None
+        #     return SectionMetastring(single_object['_keyword'], single_object['_parameters'], single_object['_name'], single_object['_subname'])
+        elif single_object['_type'] == BlockTypes.MacroDefinitionType:
+            return MacroDefinitionMetastring(single_object['_keyword'], single_object['_name'], single_object['_options'], single_object['_body'])
+        elif single_object['_type'] == BlockTypes.MacroConditionType:
+            return MacroConditionMetastring(single_object['_condition'], single_object['_name'], single_object['_ending'])
+        # elif single_object['_type'] == BlockTypes.MacroUndefinitionType:
+        #     print("MacroUndefinitionType")
+        elif single_object['_type'] == BlockTypes.CommentType:
+            return CommentMetastring(single_object['_content'])
+        elif single_object['_type'] == BlockTypes.ConditionType:
+            return ConditionMetastring(single_object['_keyword'], single_object['_expression'], single_object['_end_keyword'], single_object['_else_keyword'])
+        elif single_object['_type'] == BlockTypes.ChangelogTagType:
+            return ChangelogMetastring(single_object['_keyword'], single_object['_content'])
+        elif single_object['_type'] == BlockTypes.PackageTagType:
+            return PackageMetastring(single_object['_keyword'], single_object['_parameters'], single_object['_subname'])
+        elif single_object['_type'] == BlockTypes.Whitespaces:
+            return WhitespacesMetastring(single_object['_content'])
+        elif single_object['_type'] == BlockTypes.Uninterpreted:
+            return UninterpretedMetastring(single_object['_content'])
+        return None
 
     def _processBlockList(self, block_list, predicate_list = []):
         processed_blocks = []
