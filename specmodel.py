@@ -189,7 +189,13 @@ class SpecModelGenerator(object):
         self._toAbstractModel(self._metastrings, self._block_list)
         #MMetastring(self._metastrings).format(self._spec_model)
         self._spec_model._metastrings = self._metastrings
-        print(self._spec_model._metastrings)
+        for single_object in self._spec_model._metastrings:
+            for x in single_object.__dict__:
+                print(x, end='')
+                print(" : ", end='')
+                print(getattr(single_object,x))
+            print("\n\n")
+        # print(self._spec_model._metastrings)
         exit(0)
         return self._spec_model
     
@@ -199,7 +205,13 @@ class SpecModelGenerator(object):
             setattr(self._spec_model, x, loaded_json[x])
         self._recreateBlocks()
         self._recreateMetastringObjects()
-        # print(self._spec_model._metastrings)
+        # for single_object in self._spec_model._metastrings:
+        #     for x in single_object.__dict__:
+        #         print(x, end='')
+        #         print(" : ", end='')
+        #         print(getattr(single_object,x))
+        #     print("\n\n")
+        # # print(self._spec_model._metastrings)
         # exit(0)
         return self._spec_model
 
@@ -278,34 +290,54 @@ class SpecModelGenerator(object):
     # TODO
     def _formObject(self, single_object):
         # print(single_object)
+        # for x in single_object:
+        #     print(x, end='')
+        #     print(" : ", end='')
+        #     print(single_object[x])
+        #     print("\n\n")
         # return None
         if single_object['_type'] == BlockTypes.HeaderTagType:
-            return HeaderTagMetastring(single_object['_key'], single_object['_option'], single_object['_content'])
+            metastringObject = HeaderTagMetastring(single_object['_key'], single_object['_option'], single_object['_content'])
         # TODO - problem with keyword stripping
-        # elif single_object['_type'] == BlockTypes.SectionTagType:
-        #     for attr in ["_keyword", "_name", "_parameters", "_subname"]:
-        #         if attr not in single_object:
-        #             single_object[attr] = None
-        #     return SectionMetastring(single_object['_keyword'], single_object['_parameters'], single_object['_name'], single_object['_subname'])
+        elif single_object['_type'] == BlockTypes.SectionTagType:
+            for attr in ["_section_keyword", "_name", "_parameters", "_subname"]:
+                if attr not in single_object:
+                    single_object[attr] = ""
+            # metastringObject = SectionMetastring(single_object['_keyword'], single_object['_parameters'], single_object['_name'], single_object['_subname'])
+            metastringObject = SectionMetastring(single_object['_section_keyword'], single_object['_parameters'], single_object['_name'], single_object['_subname'])
+            # metastringObject = SectionMetastring(single_object['_keyword'], single_object['_parameters'], single_object['_name'], single_object['_subname'])
+            content = []
+            [content.append(self._formObject(x)) for x in single_object['_content'] if hasattr(x, '_type')]            
+            metastringObject.setContentMetastring(content)
         elif single_object['_type'] == BlockTypes.MacroDefinitionType:
-            return MacroDefinitionMetastring(single_object['_keyword'], single_object['_name'], single_object['_options'], single_object['_body'])
+            metastringObject = MacroDefinitionMetastring(single_object['_keyword'], single_object['_name'], single_object['_options'], single_object['_body'])
         elif single_object['_type'] == BlockTypes.MacroConditionType:
-            return MacroConditionMetastring(single_object['_condition'], single_object['_name'], single_object['_ending'])
+            metastringObject = MacroConditionMetastring(single_object['_condition'], single_object['_name'], single_object['_ending'])
         # elif single_object['_type'] == BlockTypes.MacroUndefinitionType:
         #     print("MacroUndefinitionType")
         elif single_object['_type'] == BlockTypes.CommentType:
-            return CommentMetastring(single_object['_content'])
+            metastringObject = CommentMetastring(single_object['_content'])
         elif single_object['_type'] == BlockTypes.ConditionType:
-            return ConditionMetastring(single_object['_keyword'], single_object['_expression'], single_object['_end_keyword'], single_object['_else_keyword'])
+            metastringObject = ConditionMetastring(single_object['_keyword'], single_object['_expression'], single_object['_end_keyword'], single_object['_else_keyword'])
+            ifBody = []
+            elseBody = []
+            [ifBody.append(self._formObject(x)) for x in single_object['_content']]
+            [elseBody.append(self._formObject(x)) for x in single_object['_else_body']]            
+            metastringObject.setIfBodyMetastring(ifBody)
+            metastringObject.setElseBodyMetastring(elseBody)
         elif single_object['_type'] == BlockTypes.ChangelogTagType:
-            return ChangelogMetastring(single_object['_keyword'], single_object['_content'])
+            metastringObject = ChangelogMetastring(single_object['_keyword'], single_object['_content'])
         elif single_object['_type'] == BlockTypes.PackageTagType:
-            return PackageMetastring(single_object['_keyword'], single_object['_parameters'], single_object['_subname'])
+            metastringObject = PackageMetastring(single_object['_keyword'], single_object['_parameters'], single_object['_subname'])
         elif single_object['_type'] == BlockTypes.Whitespaces:
-            return WhitespacesMetastring(single_object['_content'])
+            metastringObject = WhitespacesMetastring(single_object['_content'])
         elif single_object['_type'] == BlockTypes.Uninterpreted:
-            return UninterpretedMetastring(single_object['_content'])
-        return None
+            metastringObject = UninterpretedMetastring(single_object['_content'])
+
+        if single_object['_type'] != BlockTypes.Whitespaces:
+            metastringObject.setBlockIdx(single_object['_block_idx'])
+        metastringObject._model_type = single_object['_model_type']
+        return metastringObject
 
     def _processBlockList(self, block_list, predicate_list = []):
         processed_blocks = []
